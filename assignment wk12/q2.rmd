@@ -1,0 +1,33 @@
+---
+  title: "No Perfect Collinearity"
+output: 'pdf_document'  
+classoption: landscape
+fontsize: 12pt
+---
+
+```{r setup, include=FALSE, warning=FALSE, message=FALSE}
+library(tidyverse)
+library(wooldridge)
+library(car)
+library(lmtest)
+library(sandwich)
+library(stargazer)
+```
+
+## Check if the input variables inform each other
+
+The regression we are analysing is the following: $ln(views)=β_0 + β_1 rate + β_3 length$
+
+Where the input, $rate$, is a representation of the average rating of the video and $length$ is the video duration in seconds.
+
+The risk of collinearity here is $length$ and $rate$ could be related to one another.
+
+```{r Create the model, message=FALSE, echo=FALSE}
+youtube_data <- read.table(file = "videos.txt", sep = "\t", header = TRUE)
+youtube_model = lm(views ~ rate + length, data = youtube_data)
+```
+As we can see from the below results which reflect the coefficients of the model inputs, there is no sign of perfect collinearity since both variables have not been dropped. 
+
+```{r Reveal the coefficients}
+youtube_model$coefficients
+```
