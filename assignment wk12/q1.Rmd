@@ -71,7 +71,7 @@ log_model <- lm(log_views~rate+length, data=videos) # model with log tranformati
 vif(log_model)
 
 vif_values <- vif(log_model)
-barplot(vif_values, horiz=TRUE)
+barplot(vif_values, horiz=TRUE, , xlim = c(0, 6))
 abline(v = 5)
 ```
 
