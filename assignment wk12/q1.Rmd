@@ -1,5 +1,5 @@
 ---
-  title: "Independent and Identically Distributed"
+title: "YouTube Video Views Relationship with Length and Rating"
 output: 'pdf_document'  
 classoption: landscape
 fontsize: 12pt
@@ -11,22 +11,27 @@ library(wooldridge)
 library(car)
 library(lmtest)
 library(sandwich)
+library(gridExtra)
 library(stargazer)
 library(ggplot2)
 library(GGally)
 ```
 
-## IID: How the data was sourced
-The data was scraped from the YouTube lists, "Recently Featured", "Most Viewed", "Top Rated" and "Most Discussed", for "Today", "This Week", "This Month" and "All Time" where the crawler was run in rates of 2-3 days. As a result of these types of lists, there is an issue with IID since there would be more representation of recent videos. This would mean that one datapoint (video) can inform features of another video. 
-An couple examples of how this could manifest is:
-- Since the scraped videos are on top lists, this would mean that these videos inform of each other since they are already popular. One could speculate they are gaining more views because of endorsements, marketing or professional editing.
-- Perhaps a particularly trending topic is attracting a lot of view attention. Due it a video being related to that topic at the time, these videos can inform other videos that are within the same topic. 
+## 1.1 I.I.D.
 
+```         
+Our first crawl was on February 22nd, 2007, and started with the initial set of videos from the list of "Recently Featured", "Most Viewed", "Top Rated" and "Most Discussed", for "Today", "This Week", "This Month" and "All Time", which totalled 189 unique videos on that day. The crawl went to more than four depths, finding approximately 750 thousand videos in about five days. In the following weeks we ran the the crawler every two to three days, each time defining the initial set of videos from the list of "Most Viewed", "Top Rated", and "Most Discussed", for "Today" and "This Week", which is about 200 to 300 videos. On average, the crawl finds 73 thousand distinct videos each time in less than 9 hours.
+```
 
-## Collinearity 
+Cheng, Dale, and Liu at Simon Fraser University used a breadth-first search to collect an abundance of YoutTube data. While "the crawl [on average] finds 73 thousand distinct videos each time in less than 9 hours", there still exists some concerns about independence. Given the nature of the breadth-first approach, the data may contain some clustering of similar videos, resulting in dependence between samples. In other words, since the scraped videos are on top lists, this would mean that these videos inform each other since they are already popular. In fact, the authors mention that the algorithm "checks the list of related videos and adds any new ones to the queue."
 
+Moreover, the data was collected under the following categories: "Most Viewed", "Top Rated", "Most Discussed", for "Today", "This Week", "This Month" and "All Time". It could be the case that a specific trend is going viral, reinforcing the selection of similar videos amongst those collected by the crawler. Scraping only the most popular of videos is also a violation to random sampling, and may result in a skewed distribution that contains some bias towards popular videos. Said differently, the data may be non-normally distributed as the features do not adequately represent a wide array of genres, qualities, or other characteristics that represent the overall population of YouTube videos.
 
-## Check if the input variables inform each other
+Additionally, because the crawler runs every 2-3 days, there may be duplicates in the data as the data is moved from the "Today" category to the "This Week" category, for example. These redundancies further violate the independence assumption as the video's features may be counted multiple times.
+
+Given the way the data was collected, it is clear there are some violations to the IID assumption. The clustering of videos, skewed representation, duplicated data, and overrepresentation of popular videos are all factors that could impact our ability to pass the IID assumption, and therefore the use of a Classical Linear Model.
+
+## 1.2 Collinearity
 
 The regression we are analysing is the following: $ln(views)=β_0 + β_1 rate + β_3 length$
 
@@ -36,29 +41,17 @@ The risk of collinearity here is $length$ and $rate$ could be related to one ano
 
 ```{r Create the model, message=FALSE, echo=FALSE}
 youtube_data <- read.table(file = "videos.txt", sep = "\t", header = TRUE)
-youtube_model = lm(views ~ rate + length, data = youtube_data)
+youtube_model = lm(log(views) ~ rate + length, data = youtube_data)
+youtube_data <- subset(youtube_data, !is.na(views))
+youtube_data$residuals <- resid(youtube_model)
 ```
-As we can see from the below results which reflect the coefficients of the model inputs, there is no sign of perfect collinearity since both variables have not been dropped. 
 
-```{r Reveal the coefficients}
-youtube_model$coefficients
-Check if the input variables inform each other
-
-The regression we are analysing is the following: $ln(views)=β_0 + β_1 rate + β_3 length$
-
-Where the input, $rate$, is a representation of the average rating of the video and $length$ is the video duration in seconds.
-
-The risk of collinearity here is $length$ and $rate$ could be related to one another.
-
-```{r Create the model, message=FALSE, echo=FALSE}
-youtube_data <- read.table(file = "videos.txt", sep = "\t", header = TRUE)
-youtube_model = lm(views ~ rate + length, data = youtube_data)
-```
-As we can see from the below results which reflect the coefficients of the model inputs, there is no sign of perfect collinearity since both variables have not been dropped. 
+As we can see from the below results which reflect the coefficients of the model inputs, there is no sign of perfect collinearity since both variables have not been dropped.
 
 ```{r Reveal the coefficients}
 youtube_model$coefficients
 ```
+
 ```{r}
 # correlation plot for the continuous variables
 ggpairs(videos[c(3, 5:8)])
@@ -67,7 +60,7 @@ ggpairs(videos[c(3, 5:8)])
 ```{r}
 youtube_data$log_views <- log(youtube_data$views)
 
-log_model <- lm(log_views~rate+length, data=videos) # model with log tranformation on views
+log_model <- lm(log_views~rate+length, data=videos) # model with log transformation on views
 vif(log_model)
 
 vif_values <- vif(log_model)
@@ -75,23 +68,53 @@ barplot(vif_values, horiz=TRUE, , xlim = c(0, 6))
 abline(v = 5)
 ```
 
-## Linear Conditional Expectation: Compare the predicted and residuals of model
+## 1.3. Linear Conditional Expectation
 
 The regression we are analysing is the following: $ln(views)=β_0 + β_1 rate + β_3 length$
 
-```{r Create the model, message=FALSE, echo=FALSE}
-youtube_data <- read.table(file = "videos.txt", sep = "\t", header = TRUE)
-youtube_model = lm(views ~ rate + length, data = youtube_data)
-```
+Linear Conditional Expectation (LCE) is a crucial requirement for regression analysis because we want to be sure that the combination of variables that we're using can be adequately represented by a linear function. It is worth disclaiming that the tests we use to identify LCE is nondispositive, meaning that we only have a marginal view based on each input, hence we cannot be certain if there truly is no unseen joint probability distribution.
+
+The below show the relationship between the predicted values against the residuals. To further understand linear conditional expectation based on the input variables, both variables $Length$ and $Rate$ will be assessed.
 
 ```{r Create graph of residuals vs predicted, echo=FALSE, message=FALSE}
 youtube_resid <- resid(youtube_model)
-youtube_pred <- predict(youtube_model)
-plot(youtube_pred, youtube_resid, main = "Residual Plot",
-     xlab = "Predicted Values", ylab = "Residuals")
-abline(h = 0, col = "red", lty = 2)
+youtube_data$youtube_pred <- predict(youtube_model)
+
+ggplot(youtube_data, aes(x = youtube_pred, y = residuals)) +
+  geom_point() +                   # Add points to the plot
+  stat_smooth() +                  # Smooth plot
+  labs(x = "Predicted",            # X-axis label
+       y = "Residuals",            # Y-axis label
+       title = "Scatterplot of Predicted vs. Residuals")  # Plot title
+
 ```
 
-The above plot has some visual indication of a cluster in the range of 10,000 to 13,000 in the Predicted Values, where ther Residual values range from 0 to 50,000. This is a violation of the LCE (Linear Conditional Expectation)
+In assessing the input $Rate$ against the model residuals which can seen on the left plot, there appears to be an some noise, particularly as the ratings are between 2 to 5, the smoothing average shown as the blue line, appears to hover around the 0 mean line, however it is difficult to determine fully if this meets the LCE condition.
 
-There is also some exponential pattern rising from 0 to 12,000 in the Predicted Values range, however this seems to cut off from this approximate point onwards. This can also indicate another violation of the LCE.
+With the relationship between $Length$ and the model residuals, there is an issue with the fanning effect, where there is a concentration of data points towards shorter videos and significantly less longer videos. As a result, we see the smoothing average take on a nonlinear form that could imply another breach to the LCE condition.
+
+```{r, echo=FALSE, message=FALSE}
+# Create the scatterplot on rate
+plot1 <- ggplot(youtube_data, aes(x = rate, y = residuals)) +
+  geom_point() +                   # Add points to the plot
+  stat_smooth() +                  # Smooth plot
+  labs(x = "Rate",                 # X-axis label
+       y = "Residuals",            # Y-axis label
+       title = "Scatterplot of Residuals vs. Rate")  # Plot title
+```
+
+```{r, echo=FALSE, message=FALSE}
+# Create the scatterplot on rate
+plot2 <- ggplot(youtube_data, aes(x = length, y = residuals)) +
+  geom_point() +                    # Add points to the plot
+  stat_smooth() +                   # Smooth plot
+  labs(x = "Length",                # X-axis label
+       y = "Views",                 # Y-axis label
+       title = "Scatterplot of Residuals vs. Length")  # Plot title
+```
+
+```{r}
+grid.arrange(plot1, plot2, ncol = 2)
+```
+
+From these plots, they both imply potential breaches to LCE, however it's difficult to be certain with $Rate$ due to the noise, whereas with $Length$, the fanning effect also makes it difficult to be certain, but both are not clear 0 means, the inclination would be towards the model not meeting LCE requirements.
