@@ -16,6 +16,8 @@ library(stargazer)
 library(sandwich)
 library(lmtest)
 library(dplyr)
+library(ggplot2)
+library(reshape2)
 
 theme_set(theme_bw())
 ```
@@ -49,7 +51,7 @@ my_data <- subset(my_data, Involved.Families != "Not Enough Data"
                          & Ambitious.Instruction != "Not Enough Data"
                          & Collaborative.Teachers != "Not Enough Data")
 
-# Convert Likert variables into ascending scales (0 = Lowest, N = Highest)
+# Convert Likert variables into ascending scales (1 = Lowest, N = Highest)
 my_data$Involved.Families <- factor(my_data$Involved.Families, levels = c("Very Weak", "Weak", "Neutral", "Strong", "Very Strong"), labels = c(1, 2, 3, 4, 5))
 
 my_data$Supportive.Environment <- factor(my_data$Supportive.Environment, levels = c("Very Weak", "Weak", "Neutral", "Strong", "Very Strong"), labels = c(1, 2, 3, 4, 5))
@@ -85,6 +87,9 @@ my_data$Teacher.Attendance.2012...Percent <- as.numeric(gsub("%", "", my_data$Te
                     
 my_data$Misconducts.Resulting.in.Suspensions.2012...Percent <- as.numeric(gsub("%", "", my_data$Misconducts.Resulting.in.Suspensions.2012...Percent)) / 100
 
+# Drop nulls in dependent variable. For some reason the code above did not catch all nulls (don't know why)
+my_data <- my_data[complete.cases(my_data$Growth.Overall.Reading.and.Math), ]
+
 ```
 
 # Introduction
@@ -97,6 +102,48 @@ The 2012 School Progress Report Card data from the City of Chicago data portal p
 
 # How Key Concepts are Operationalized
 
+# EDA
+
+```{r Correlation Matrix}
+library(GGally)
+
+# Create the pairplot
+ggpairs(my_data, columns = school_columns, progress=FALSE)
+
+```
+
+```{r Correlation Matrix}
+# Install the required packages if not already installed
+if (!requireNamespace("reshape2", quietly = TRUE)) {
+  install.packages("reshape2")
+}
+
+# Compute the correlation between each predictor variable and the dependent variable
+correlations <- cor(my_data[, setdiff(names(my_data), "Growth.Overall.Reading.and.Math")], my_data$Growth.Overall.Reading.and.Math)
+
+# Convert the corr matrix to a df for viz
+cor_df <- melt(correlations)
+
+# Reorder the levels of the Var1 variable based on the correlation with the dependent variable
+cor_df$Var1 <- reorder(cor_df$Var1, cor_df$value, FUN = function(x) -abs(x))
+
+# Create a corr heatmap
+heatmap_plot <- ggplot(cor_df, aes(x = Var1, y = Var2, fill = value, label = round(value, 2))) +
+  geom_tile() +
+  geom_text(color = "black", size = 6, vjust = 1) +  # Add correlation value as text
+  scale_fill_gradient(low = "yellow", high = "purple") +
+  labs(title = "Correlation of Independent Vars w/ Respect to Dependent Var") +
+  labs(x = "", y = "") +  # Remove axis labels for Var1 and Var2
+  theme_minimal() +
+  theme(axis.text.x = element_text(angle = 90, hjust = 1)) +
+  coord_fixed()
+
+heatmap_plot <- heatmap_plot + labs(y = "Growth.Overall.Reading.and.Math")
+
+heatmap_plot
+```
+
+
 
 ```{r Create some models}
 # Naive Model: A few input variables
@@ -106,6 +153,11 @@ model_naive <- lm(Growth.Overall.Reading.and.Math ~ Student.Attendance.2012...Pe
 model_complex <- lm(Growth.Overall.Reading.and.Math ~  Student.Attendance.2012...Percent + Misconducts.Resulting.in.Suspensions.2012...Percent + Average.Days.of.Suspension.2012 + Teacher.Attendance.2012...Percent + Involved.Families + Supportive.Environment + Safety + Effective.Leaders + Ambitious.Instruction + Collaborative.Teachers, data = my_data)
 
 ```
+
+```{r}
+summary(model_naive)
+```
+
 
 # Key Modeling Decisions
 
