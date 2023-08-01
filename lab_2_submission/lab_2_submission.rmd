@@ -17,6 +17,7 @@ library(sandwich)
 library(lmtest)
 library(dplyr)
 library(ggplot2)
+library(GGally)
 library(reshape2)
 
 theme_set(theme_bw())
@@ -105,14 +106,6 @@ The 2012 School Progress Report Card data from the City of Chicago data portal p
 # EDA
 
 ```{r Correlation Matrix}
-library(GGally)
-
-# Create the pairplot
-ggpairs(my_data, columns = school_columns, progress=FALSE)
-
-```
-
-```{r Correlation Matrix}
 # Install the required packages if not already installed
 if (!requireNamespace("reshape2", quietly = TRUE)) {
   install.packages("reshape2")
@@ -143,8 +136,6 @@ heatmap_plot <- heatmap_plot + labs(y = "Growth.Overall.Reading.and.Math")
 heatmap_plot
 ```
 
-
-
 ```{r Create some models}
 # Naive Model: A few input variables
 model_naive <- lm(Growth.Overall.Reading.and.Math ~ Student.Attendance.2012...Percent +  Involved.Families + Collaborative.Teachers, data = my_data)
@@ -158,6 +149,41 @@ model_complex <- lm(Growth.Overall.Reading.and.Math ~  Student.Attendance.2012..
 summary(model_naive)
 ```
 
+```{r}
+summary(model_complex)
+```
+
+# Assumptions
+
+Given our large sample size (218 observations), we can utilize a multiple regression model to assess the key drivers on student success, assuming that our data meets the following criteria: The data must be Independent and Identically Distributed (IID), there must be no perfect collinearity, and appropriate transformations need to be executed (if necessary) to ensure we meet the linear conditional expectation assumption.
+
+[**IID**]{.underline}
+
+Each row in our dataframe represents a different school in Chicago. The researchers who compiled this dataset randomly sampled schools from around the Chicago area, ensuring that each observation is independent from one another. Additionally, we intentionally excluded variables such as zip code and location coordinates, which can lead to clustering and violate the IID assumption. Because of the random sampling techniques and exclusion of certain variables that could introduce bias and clustering, we can safely conclude that our data is IID.
+
+[**No Perfect Collinearity**]{.underline}
+
+Another key assumption in using large linear models is that the predictor variables must have no perfect collinearity. As shown in the correlation matrix below, the strongest correlation between independent variables is between $Collaborative.Teachers$ and $Effective.Leaders$, with a Pearson's Correlation Coefficient of r = 0.78. Because this relationship is still far away from 1, even the strongest relationship between independent variables does not result in near perfect collinearity.
+
+```{r Correlation Matrix}
+ggpairs(my_data, columns = school_columns, progress=FALSE)
+```
+
+Additionally, we can run Variance Inflation Factor (VIF) on our complex model to better understand how much the variance of the various beta coefficients increases due to multicollinearity. A VIF of less than 5 is indicative of no perfect collineaity. As we can see from the VIF results above, none of our independent variabels have a VIF value of \>= 5. Between the correlation matrix and VIF test, we can conclude our model passes the "no perfect collinearity" assumption.
+
+```{r Assessing Multicollinearity}
+vif(model_complex)
+```
+
+[**Linear Conditional Expectation**]{.underline}
+
+In order to properly apply a multiple regression analysis, we need to ensure linear relationships exist between our features and outcome variable. In case we observe non-linear relationships, we can apply various transformations (i.e., log transformation or polynomial terms) to ensure our data is linear enough to have a nicely fitted Best Linear Predictor (BLP). By leveraging the correlation matrix above, we can leverage the ocular test to observe the relationships between our features and outcome variable, $Growth.Overall.Reading.and.Math$. Because no non-linear relationships are present, we can proceed with our data as is, without implementing any transformations on the features. Additionally, the histogram below shows that our outcome variable appears to be normally distributed, further supporting the claim that no transformations need to be executed.
+
+```{r}
+hist(my_data$Growth.Overall.Reading.and.Math)
+```
+
+Since our data is IID, has no perfect collinearity, and is linear in nature, we pass all of our large linear model assumptions and can therefore proceed with the use of a multiple regression model.
 
 # Key Modeling Decisions
 
