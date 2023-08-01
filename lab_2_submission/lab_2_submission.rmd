@@ -1,0 +1,118 @@
+---
+title: "Chicago Public Schools Mathematics and Literacy Skills"
+author: 'Austen Lowitz, Annie DeForge, William Teng'
+output:
+  pdf_document
+header-includes:
+ \usepackage{wrapfig}
+ \usepackage{float}
+ \floatplacement{figure}{H}
+---
+
+```{r load packages and set options, include=FALSE}
+library(tidyverse)
+library(magrittr)
+library(stargazer)
+library(sandwich)
+library(lmtest)
+library(dplyr)
+
+theme_set(theme_bw())
+```
+
+```{r load data, echo=FALSE, message = FALSE, include=FALSE}
+
+# Set columns to focus on
+school_columns <- c("Growth.Overall.Reading.and.Math",
+                    "Student.Attendance.2012...Percent",
+                    "Misconducts.Resulting.in.Suspensions.2012...Percent",
+                    "Average.Days.of.Suspension.2012",  
+                    "Teacher.Attendance.2012...Percent",
+                    "Involved.Families",               
+                    "Supportive.Environment",            
+                    "Safety",                           
+                    "Effective.Leaders",                
+                    "Ambitious.Instruction",            
+                    "Collaborative.Teachers") 
+
+# Read in initial data : 460 Records
+my_data <- read.csv("chicago-public-schools-elementary-school-progress-report-card-2012-2013-1.csv")[, school_columns] 
+
+# Filter out NULLs : 416 Records
+my_data <- my_data[complete.cases(my_data[, school_columns]), ]
+
+# Filter out "Not Enough Data" : 282 Records
+my_data <- subset(my_data, Involved.Families != "Not Enough Data"
+                         & Supportive.Environment != "Not Enough Data"
+                         & Safety != "Not Enough Data"
+                         & Effective.Leaders != "Not Enough Data"
+                         & Ambitious.Instruction != "Not Enough Data"
+                         & Collaborative.Teachers != "Not Enough Data")
+
+# Convert Likert variables into ascending scales (0 = Lowest, N = Highest)
+my_data$Involved.Families <- factor(my_data$Involved.Families, levels = c("Very Weak", "Weak", "Neutral", "Strong", "Very Strong"), labels = c(1, 2, 3, 4, 5))
+
+my_data$Supportive.Environment <- factor(my_data$Supportive.Environment, levels = c("Very Weak", "Weak", "Neutral", "Strong", "Very Strong"), labels = c(1, 2, 3, 4, 5))
+
+my_data$Safety <- factor(my_data$Safety, levels = c("Very Weak", "Weak", "Neutral", "Strong", "Very Strong"), labels = c(1, 2, 3, 4, 5))
+
+my_data$Effective.Leaders <- factor(my_data$Effective.Leaders, levels = c("Very Weak", "Weak", "Neutral", "Strong", "Very Strong"), labels = c(1, 2, 3, 4, 5))
+
+my_data$Ambitious.Instruction <- factor(my_data$Ambitious.Instruction, levels = c("Very Weak", "Weak", "Neutral", "Strong", "Very Strong"), labels = c(1, 2, 3, 4, 5))
+
+my_data$Collaborative.Teachers <- factor(my_data$Collaborative.Teachers, levels = c("Very Weak", "Weak", "Neutral", "Strong", "Very Strong"), labels = c(1, 2, 3, 4, 5))
+
+# Convert numeric columns into numeric
+my_data$Average.Days.of.Suspension.2012 <- as.numeric(my_data$Average.Days.of.Suspension.2012)  
+
+my_data$Involved.Families <- as.numeric(my_data$Involved.Families)
+
+my_data$Supportive.Environment <- as.numeric(my_data$Supportive.Environment)
+
+my_data$Safety <- as.numeric(my_data$Safety)
+
+my_data$Effective.Leaders <- as.numeric(my_data$Effective.Leaders)
+
+my_data$Ambitious.Instruction <- as.numeric(my_data$Ambitious.Instruction)
+
+my_data$Collaborative.Teachers <- as.numeric(my_data$Collaborative.Teachers)
+
+my_data$Growth.Overall.Reading.and.Math <- as.numeric(gsub("%", "", my_data$Growth.Overall.Reading.and.Math)) / 100
+
+my_data$Student.Attendance.2012...Percent <- as.numeric(gsub("%", "", my_data$Student.Attendance.2012...Percent)) / 100
+
+my_data$Teacher.Attendance.2012...Percent <- as.numeric(gsub("%", "", my_data$Teacher.Attendance.2012...Percent)) / 100
+                    
+my_data$Misconducts.Resulting.in.Suspensions.2012...Percent <- as.numeric(gsub("%", "", my_data$Misconducts.Resulting.in.Suspensions.2012...Percent)) / 100
+
+```
+
+# Introduction
+
+In an effort to enhance education in Chicago, we aim to gain an understanding of the factors that contribute to a positive learning experience for students. We seek to identify evidence-based actionable insights for schools and policymakers throughout the Chicago Public School District to make informed decisions so that students can thrive academically. This can range from staffing and leadership decisions, school security code changes, teaching staff rostering, and discipline policies.
+
+# Data
+
+The 2012 School Progress Report Card data from the City of Chicago data portal provides us with a view of the education landscape. It includes the academic performance growth metric ($Growth.Overall.Reading.and.Math$), school culture insights ($Misconducts.Resulting.in.Suspensions.2012...Percent$,$Average.Days.of.Suspension.2012$ $Student.Attendance.2012...Percent$, $Teacher.Attendance.2012...Percent$), and student support data ($Involved.Families$, $Supportive.Environment$,$Safety$,$Effective.Leaders$, $Ambitious.Instruction$,$Collaborative.Teachers$).
+
+# How Key Concepts are Operationalized
+
+
+```{r Create some models}
+# Naive Model: A few input variables
+model_naive <- lm(Growth.Overall.Reading.and.Math ~ Student.Attendance.2012...Percent +  Involved.Families + Collaborative.Teachers, data = my_data)
+
+# Complex Model: All the variables
+model_complex <- lm(Growth.Overall.Reading.and.Math ~  Student.Attendance.2012...Percent + Misconducts.Resulting.in.Suspensions.2012...Percent + Average.Days.of.Suspension.2012 + Teacher.Attendance.2012...Percent + Involved.Families + Supportive.Environment + Safety + Effective.Leaders + Ambitious.Instruction + Collaborative.Teachers, data = my_data)
+
+```
+
+# Key Modeling Decisions
+
+# Regression Table
+
+# Discussion of Results
+
+# Discussion of Limitations (Statistical Limitations, Structural Limitations)
+
+# Conclusion
