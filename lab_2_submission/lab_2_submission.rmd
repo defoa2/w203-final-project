@@ -17,29 +17,36 @@ library(sandwich)
 library(lmtest)
 library(dplyr)
 library(ggplot2)
+library(readr)
 library(GGally)
 library(reshape2)
+library(car)
 
 theme_set(theme_bw())
 ```
 
 ```{r load data, echo=FALSE, message = FALSE, include=FALSE}
+# setwd("C:/Users/Annie's Computer/Documents/DS 203/lab 2/") working directory for annie
 
 # Set columns to focus on
 school_columns <- c("Growth.Overall.Reading.and.Math",
                     "Student.Attendance.2012...Percent",
                     "Misconducts.Resulting.in.Suspensions.2012...Percent",
-                    "Average.Days.of.Suspension.2012",  
+                    "Average.Days.of.Suspension.2012",
                     "Teacher.Attendance.2012...Percent",
-                    "Involved.Families",               
-                    "Supportive.Environment",            
-                    "Safety",                           
-                    "Effective.Leaders",                
-                    "Ambitious.Instruction",            
-                    "Collaborative.Teachers") 
+                    "Involved.Families",
+                    "Supportive.Environment",
+                    "Safety",
+                    "Effective.Leaders",
+                    "Ambitious.Instruction",
+                    "Collaborative.Teachers")
+
 
 # Read in initial data : 460 Records
 my_data <- read.csv("chicago-public-schools-elementary-school-progress-report-card-2012-2013-1.csv")[, school_columns] 
+
+my_data <- read.csv("chicago-public-schools-elementary-school-progress-report-card-2012-2013-1.csv") 
+
 
 # Filter out NULLs : 416 Records
 my_data <- my_data[complete.cases(my_data[, school_columns]), ]
@@ -105,6 +112,40 @@ The 2012 School Progress Report Card data from the City of Chicago data portal p
 
 # EDA
 
+```{r Distribution and Descriptive Stats}
+# histogram of attendence variable
+hist(my_data$Student.Attendance.2012...Percent)
+hist(my_data$Teacher.Attendance.2012...Percent)
+# histogram of discipline variables
+hist(my_data$Misconducts.Resulting.in.Suspensions.2012...Percent)
+hist(my_data$Average.Days.of.Suspension.2012)
+# histogram of likert variables
+hist(my_data$Effective.Leaders)
+hist(my_data$Involved.Families)
+hist(my_data$Safety)
+hist(my_data$Supportive.Environment)
+hist(my_data$Ambitious.Instruction)
+hist(my_data$Collaborative.Teachers)
+
+# plots for attendance vs growth
+plot(my_data$Student.Attendance.2012...Percent, my_data$Growth.Overall.Reading.and.Math)
+plot(my_data$Teacher.Attendance.2012...Percent, my_data$Growth.Overall.Reading.and.Math)
+# plots for discipline vs growth
+plot(my_data$Average.Days.of.Suspension.2012, my_data$Growth.Overall.Reading.and.Math)
+plot(my_data$Misconducts.Resulting.in.Suspensions.2012...Percent, my_data$Growth.Overall.Reading.and.Math)
+
+# tables of average growth across likert categories
+tapply(my_data$Growth.Overall.Reading.and.Math, my_data$Safety, mean)
+tapply(my_data$Growth.Overall.Reading.and.Math, my_data$Involved.Families, mean)
+tapply(my_data$Growth.Overall.Reading.and.Math, my_data$Supportive.Environment, mean)
+tapply(my_data$Growth.Overall.Reading.and.Math, my_data$Effective.Leaders, mean)
+tapply(my_data$Growth.Overall.Reading.and.Math, my_data$Ambitious.Instruction, mean)
+tapply(my_data$Growth.Overall.Reading.and.Math, my_data$Collaborative.Teachers, mean)
+```
+
+By examining the data, we saw that the likert variables had a normal spread centered around a neutral rating as the most likely ranking for all of the variables. Student and teacher attendance by percentage was also mostly normally distributed. The percentage of misconducts resulting in suspensions was skewed towards the left and the average days of suspension was skewed towards the right. From examining the plots of the continuous variables vs the outcome variable, there were no significant curves in the data that would require transformations.
+
+
 ```{r Correlation Matrix}
 # Install the required packages if not already installed
 if (!requireNamespace("reshape2", quietly = TRUE)) {
@@ -112,6 +153,12 @@ if (!requireNamespace("reshape2", quietly = TRUE)) {
 }
 
 # Compute the correlation between each predictor variable and the dependent variable
+
+# if there is an error on line 162 for x must be numeric, the commented out lines were what fixed the error for me
+# subset <- my_data[, setdiff(names(my_data), "Growth.Overall.Reading.and.Math")]
+# subset <- subset[, unlist(lapply(subset, is.numeric))]
+# correlations <- cor(subset, my_data$Growth.Overall.Reading.and.Math)
+
 correlations <- cor(my_data[, setdiff(names(my_data), "Growth.Overall.Reading.and.Math")], my_data$Growth.Overall.Reading.and.Math)
 
 # Convert the corr matrix to a df for viz
@@ -165,7 +212,7 @@ Each row in our dataframe represents a different school in Chicago. The research
 
 Another key assumption in using large linear models is that the predictor variables must have no perfect collinearity. As shown in the correlation matrix below, the strongest correlation between independent variables is between $Collaborative.Teachers$ and $Effective.Leaders$, with a Pearson's Correlation Coefficient of r = 0.78. Because this relationship is still far away from 1, even the strongest relationship between independent variables does not result in near perfect collinearity.
 
-```{r Correlation Matrix}
+```{r Correlation Matrix 2}
 ggpairs(my_data, columns = school_columns, progress=FALSE)
 ```
 
