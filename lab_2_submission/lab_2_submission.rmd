@@ -347,7 +347,7 @@ waldtest(mod5, mod10,  vcov=vcovHC(mod10, type="HC0")) # significant
 #growth variable
 mod11 <- lm(Student.Performance.Reading.and.Math~Student.Attendance + Involved.Families + Safety + Years.on.Probation + Growth.Reading.and.Math, data=my_data)
 
-waldtest(mod10, mod11,  vcov=vcovHC(mod11, type="HC0"))
+waldtest(mod10, mod11,  vcov=vcovHC(mod11, type="HC0")) # significant
 
 # location
 # latitude
@@ -356,13 +356,13 @@ mod12 <- lm(Student.Performance.Reading.and.Math~Student.Attendance + Involved.F
 waldtest(mod11, mod12,  vcov=vcovHC(mod12, type="HC0")) # not significant
 
 # longitude
-mod12 <- lm(Student.Performance.Reading.and.Math~Student.Attendance + Involved.Families + Safety + Years.on.Probation + Growth.Reading.and.Math + Longitude, data=my_data)
+mod13 <- lm(Student.Performance.Reading.and.Math~Student.Attendance + Involved.Families + Safety + Years.on.Probation + Growth.Reading.and.Math + Longitude, data=my_data)
 
-waldtest(mod10, mod12,  vcov=vcovHC(mod12, type="HC0")) # significant
+waldtest(mod11, mod13,  vcov=vcovHC(mod12, type="HC0")) # significant
 
 # assigning optimized to model names
-model_controllable <- mod10
-model_controllable_geo <- mod12
+model_controllable <- mod11
+model_controllable_geo <- mod13
 ```
 
 ```{r controllable summary, echo=FALSE, include=FALSE}
