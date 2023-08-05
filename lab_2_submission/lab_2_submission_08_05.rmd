@@ -1,0 +1,331 @@
+---
+title: "Chicago Public Schools Mathematics and Literacy Skills"
+author: 'Austen Lowitz, Annie DeForge, William Teng'
+output:  pdf_document
+geometry: "left=0.5in,right=0.5in,top=0.5in,bottom=0.5in"
+header-includes:
+ \usepackage{wrapfig}
+ \usepackage{float}
+ \floatplacement{figure}{H}
+---
+
+```{r load packages and set options, include=FALSE}
+library(tidyverse)
+library(magrittr)
+library(stargazer)
+library(sandwich)
+library(lmtest)
+library(dplyr)
+library(ggplot2)
+library(readr)
+library(GGally)
+library(reshape2)
+library(car)
+
+theme_set(theme_bw())
+```
+
+```{r load data, echo=FALSE, message = FALSE, include=FALSE}
+# setwd("C:/Users/Annie's Computer/Documents/DS 203/lab 2/") working directory for annie
+
+# Set columns to focus on
+school_columns <- c("Student.Performance.Reading.and.Math",
+                    "Growth.Overall.Reading.and.Math",
+                    "Student.Attendance.2012...Percent",
+                    "Misconducts.Resulting.in.Suspensions.2012...Percent",
+                    "Average.Days.of.Suspension.2012",
+                    "Teacher.Attendance.2012...Percent",
+                    "Involved.Families",
+                    "Supportive.Environment",
+                    "Safety",
+                    "Effective.Leaders",
+                    "Ambitious.Instruction",
+                    "Collaborative.Teachers",
+                    "Longitude",
+                    "Latitude",
+                    "Years.on.Probation")
+
+# Read in initial data : 460 Records
+my_data <- read.csv("chicago-public-schools-elementary-school-progress-report-card-2012-2013-1.csv")[, school_columns] 
+
+# my_data <- read.csv("chicago-public-schools-elementary-school-progress-report-card-2012-2013-1.csv") 
+
+
+# Filter out NULLs : 416 Records
+my_data <- my_data[complete.cases(my_data[, school_columns]), ]
+
+# Filter out "Not Enough Data" : 282 Records
+my_data <- subset(my_data, Involved.Families != "Not Enough Data"
+                         & Supportive.Environment != "Not Enough Data"
+                         & Safety != "Not Enough Data"
+                         & Effective.Leaders != "Not Enough Data"
+                         & Ambitious.Instruction != "Not Enough Data"
+                         & Collaborative.Teachers != "Not Enough Data")
+
+# Convert Likert variables into ascending scales (1 = Lowest, N = Highest)
+my_data$Involved.Families <- factor(my_data$Involved.Families, levels = c("Very Weak", "Weak", "Neutral", "Strong", "Very Strong"), labels = c(1, 2, 3, 4, 5))
+
+my_data$Supportive.Environment <- factor(my_data$Supportive.Environment, levels = c("Very Weak", "Weak", "Neutral", "Strong", "Very Strong"), labels = c(1, 2, 3, 4, 5))
+
+my_data$Safety <- factor(my_data$Safety, levels = c("Very Weak", "Weak", "Neutral", "Strong", "Very Strong"), labels = c(1, 2, 3, 4, 5))
+
+my_data$Effective.Leaders <- factor(my_data$Effective.Leaders, levels = c("Very Weak", "Weak", "Neutral", "Strong", "Very Strong"), labels = c(1, 2, 3, 4, 5))
+
+my_data$Ambitious.Instruction <- factor(my_data$Ambitious.Instruction, levels = c("Very Weak", "Weak", "Neutral", "Strong", "Very Strong"), labels = c(1, 2, 3, 4, 5))
+
+my_data$Collaborative.Teachers <- factor(my_data$Collaborative.Teachers, levels = c("Very Weak", "Weak", "Neutral", "Strong", "Very Strong"), labels = c(1, 2, 3, 4, 5))
+
+# my_data$Involved.Families <- as.numeric(my_data$Involved.Families)
+
+#my_data$Supportive.Environment <- as.numeric(my_data$Supportive.Environment)
+
+#my_data$Safety <- as.numeric(my_data$Safety)
+
+#my_data$Effective.Leaders <- as.numeric(my_data$Effective.Leaders)
+
+#my_data$Ambitious.Instruction <- as.numeric(my_data$Ambitious.Instruction)
+
+#my_data$Collaborative.Teachers <- as.numeric(my_data$Collaborative.Teachers)
+
+my_data$Growth.Overall.Reading.and.Math <- as.numeric(gsub("%", "", my_data$Growth.Overall.Reading.and.Math)) / 100
+
+my_data$Student.Attendance.2012...Percent <- as.numeric(gsub("%", "", my_data$Student.Attendance.2012...Percent)) / 100
+
+my_data$Teacher.Attendance.2012...Percent <- as.numeric(gsub("%", "", my_data$Teacher.Attendance.2012...Percent)) / 100
+                    
+my_data$Misconducts.Resulting.in.Suspensions.2012...Percent <- as.numeric(gsub("%", "", my_data$Misconducts.Resulting.in.Suspensions.2012...Percent)) / 100
+                    
+my_data$Student.Performance.Reading.and.Math <- as.numeric(gsub("%", "", my_data$Student.Performance.Reading.and.Math)) / 100
+
+# Drop nulls in dependent variable. For some reason the code above did not catch all nulls (don't know why)
+my_data <- my_data[complete.cases(my_data$Growth.Overall.Reading.and.Math), ]
+my_data <- my_data[complete.cases(my_data$Student.Performance.Reading.and.Math), ]
+
+# Changing the name of columns because they are too long for the stargazer
+my_data <- my_data %>%
+  rename(Suspensions.Percent = Misconducts.Resulting.in.Suspensions.2012...Percent)
+my_data <- my_data %>%
+  rename(Growth.Reading.and.Math = Growth.Overall.Reading.and.Math)
+my_data <- my_data %>%
+  rename(Student.Attendance = Student.Attendance.2012...Percent)
+my_data <- my_data %>%
+  rename(Suspension.Days = Average.Days.of.Suspension.2012)
+my_data <- my_data %>%
+  rename(Teacher.Attendance = Teacher.Attendance.2012...Percent)
+
+```
+
+# Introduction
+
+In an effort to enhance education in Chicago, we aim to gain an understanding of the factors that contribute to a positive learning experience for students. We seek to identify evidence-based actionable insights for schools and policymakers throughout the Chicago Public School District to make informed decisions so that students can thrive academically. This can range from staffing and leadership decisions, school security code changes, teaching staff rostering, and discipline policies.
+
+# Data
+
+The 2012 School Progress Report Card data from the City of Chicago data portal provides us with a view of the education landscape. It includes the academic performance growth metric ($Student.Performance.Reading.and.Math$), school culture insights ($Suspensions.Percent$,$Suspension.Days$ $Student.Attendance$, $Teacher.Attendance$), and student support data ($Involved.Families$, $Supportive.Environment$,$Safety$,$Effective.Leaders$, $Ambitious.Instruction$,$Collaborative.Teachers$).
+
+# How Key Concepts are Operationalized
+
+# EDA
+
+```{r Distribution and Descriptive Stats}
+# histogram of attendence variable
+hist(my_data$Student.Attendance)
+hist(my_data$Teacher.Attendance)
+# histogram of discipline variables
+hist(my_data$Suspensions.Percent)
+hist(my_data$Suspension.Days)
+# histogram of likert variables - doesn't work unless vars are numeric
+#hist(my_data$Effective.Leaders)
+#hist(my_data$Involved.Families)
+#hist(my_data$Safety)
+#hist(my_data$Supportive.Environment)
+#hist(my_data$Ambitious.Instruction)
+#hist(my_data$Collaborative.Teachers)
+
+# plots for attendance vs growth
+plot(my_data$Student.Attendance, my_data$Student.Performance.Reading.and.Math)
+plot(my_data$Teacher.Attendance, my_data$Student.Performance.Reading.and.Math)
+
+plot(log(my_data$Student.Attendance + 0.01), my_data$Student.Performance.Reading.and.Math)
+
+
+# plots for discipline vs growth
+plot(my_data$Suspension.Days, my_data$Student.Performance.Reading.and.Math)
+plot(my_data$Suspensions.Percent, my_data$Student.Performance.Reading.and.Math)
+
+# tables of average growth across likert categories
+tapply(my_data$Student.Performance.Reading.and.Math, my_data$Safety, mean)
+tapply(my_data$Student.Performance.Reading.and.Math, my_data$Involved.Families, mean)
+tapply(my_data$Student.Performance.Reading.and.Math, my_data$Supportive.Environment, mean)
+tapply(my_data$Student.Performance.Reading.and.Math, my_data$Effective.Leaders, mean)
+tapply(my_data$Student.Performance.Reading.and.Math, my_data$Ambitious.Instruction, mean)
+tapply(my_data$Student.Performance.Reading.and.Math, my_data$Collaborative.Teachers, mean)
+```
+
+By examining the data, we observed that the likert variables had a normal spread centered around a neutral rating as the most likely ranking for all of the variables. Student and teacher attendance by percentage was also mostly normally distributed. The percentage of misconducts resulting in suspensions was skewed towards the left and the average days of suspension was skewed towards the right. From examining the plots of the continuous variables vs the outcome variable, there were no significant non-linear relationships in the data that would require transformations.
+
+```{r Correlation Matrix, echo=FALSE}
+# Install the required packages if not already installed
+if (!requireNamespace("reshape2", quietly = TRUE)) {
+  install.packages("reshape2")
+}
+
+# Subset only the numeric variables, excluding the dependent variable
+subset <- my_data[, setdiff(names(my_data), "Student.Performance.Reading.and.Math")]
+subset <- subset[, unlist(lapply(subset, is.numeric))]
+
+# Compute the correlation between each predictor variable and the dependent variable
+correlations <- cor(subset, my_data$Student.Performance.Reading.and.Math)
+
+# Convert the corr matrix to a df for viz
+cor_df <- melt(correlations)
+
+# Reorder the levels of the Var1 variable based on the correlation with the dependent variable
+cor_df$Var1 <- reorder(cor_df$Var1, cor_df$value, FUN = function(x) -abs(x))
+
+# Create a corr heatmap
+heatmap_plot <- ggplot(cor_df, aes(x = Var1, y = Var2, fill = value, label = round(value, 2))) +
+  geom_tile() +
+  geom_text(color = "black", size = 6, vjust = 1) +  # Add correlation value as text
+  scale_fill_gradient(low = "yellow", high = "purple") +
+  labs(title = "Correlation of Independent Vars w/ Respect to Dependent Var") +
+  labs(x = "", y = "") +  # Remove axis labels for Var1 and Var2
+  theme_minimal() +
+  theme(axis.text.x = element_text(angle = 90, hjust = 1)) +
+  coord_fixed()
+
+heatmap_plot <- heatmap_plot + labs(y = "Student.Performance.Reading.and.Math")
+
+heatmap_plot
+```
+```{r}
+dim(my_data)
+```
+
+
+```{r Create some models}
+# Naive Model: A few input variables
+model_naive <- lm(Student.Performance.Reading.and.Math ~ Student.Attendance, data = my_data)
+
+# Complex Model: All the variables
+model_complex <- lm(Student.Performance.Reading.and.Math ~ Growth.Reading.and.Math +
+                    Student.Attendance +
+                    Suspensions.Percent +
+                    Suspension.Days +
+                    Teacher.Attendance +
+                    Involved.Families +
+                    Supportive.Environment +
+                    Safety +
+                    Effective.Leaders +
+                    Ambitious.Instruction +
+                    Collaborative.Teachers +
+                    Longitude +
+                    Latitude + 
+                    Years.on.Probation, data = my_data)
+
+# Wald Test: Controllable variables
+model_controllable <- lm(Student.Performance.Reading.and.Math ~ Student.Attendance +
+                        Teacher.Attendance +
+                        Involved.Families +
+                        Supportive.Environment +
+                        Safety +
+                        Effective.Leaders +
+                        Ambitious.Instruction +
+                        Collaborative.Teachers +
+                        Years.on.Probation, data = my_data)
+
+# Wald Test: Controllable variables + Geolocation
+model_controllable_geo <- lm(Student.Performance.Reading.and.Math ~ Student.Attendance +
+                            Teacher.Attendance +
+                            Involved.Families +
+                            Supportive.Environment +
+                            Safety +
+                            Effective.Leaders +
+                            Ambitious.Instruction +
+                            Collaborative.Teachers +
+                            Years.on.Probation +
+                            Longitude + 
+                            Latitude, data = my_data)
+```
+
+```{r, echo=FALSE, message=FALSE}
+summary(model_naive)
+```
+
+```{r, echo=FALSE, message=FALSE}
+summary(model_complex)
+```
+
+```{r, echo=FALSE, message=FALSE}
+summary(model_controllable)
+```
+
+```{r, echo=FALSE, message=FALSE}
+summary(model_controllable_geo)
+```
+
+# Assumptions
+
+Given our large sample size (218 observations), we can utilize a multiple regression model to assess the key drivers on student success, assuming that our data meets the following large linear model assumptions: The data must be Independent and Identically Distributed (IID), and there must exist no perfect collinearity between features.
+
+[**IID**]{.underline}
+
+Each row in our dataframe represents a unique elementary school in Chicago. Because the data includes the entire population of elementary schools in Chicago rather than a specific sample, we have reduced concerns related to sampling bias since every school is represented in the dataset. Since we are analyzing the entire population of elementary schools in Chicago, we assume that the schools operate under similar conditions and follow similar educational standards and policies. This supports the notion that our observations are drawn from the same distribution, therefore meeting the IID assumption. That said, our scope is limited towards only being able to make generalizations about Chicago public schools.
+
+[**No Perfect Collinearity**]{.underline}
+
+Another key assumption in using large linear models is that the predictor variables must have no perfect collinearity. As shown in the correlation matrix below, the strongest correlation between independent variables is between $Collaborative.Teachers$ and $Effective.Leaders$, with a Pearson's Correlation Coefficient of r = 0.78. Because this relationship is still far away from 1, even the strongest relationship between independent variables does not result in near perfect collinearity.
+
+```{r Correlation Matrix, echo=FALSE}
+suppressWarnings(ggpairs(my_data, progress = FALSE))
+```
+
+Additionally, we can run Variance Inflation Factor (VIF) on our complex model to better understand how much the variance of the various beta coefficients increases due to multicollinearity. Typically, a VIF of less than 5 is indicative of no perfect collineaity. 
+
+```{r Assessing Multicollinearity}
+gvif_results <- vif(model_complex)
+#select only the index and last column (GVIF^(1/(2*Df)))
+gvif_sqrt_column <- gvif_results[, ncol(gvif_results)]
+result_df <- data.frame(GVIF_sqrt = gvif_sqrt_column)
+result_df
+```
+
+As we can see from the VIF results above, none of our independent variables have a VIF value of \>= 5. Between the correlation matrix and VIF test, we can conclude our model passes the "no perfect collinearity" assumption.
+
+Since our data is IID and has no perfect collinearity, we pass all of our large linear model assumptions and can therefore proceed with the use of a multiple regression model.
+
+```{r}
+anova(model_naive, model_complex)
+```
+
+# Key Modeling Decisions - Annie
+
+Additionally, we tried standardizing the input data and noticed the only difference in results were the scaling of the coefficients. The R^2, standard errors and F-statistic remained the same between both standardized and unstandardized models since subtracting the mean and dividing by the standard deviation does not change the underlying relationship the data has with the dependent variable. 
+
+# Regression Table - William
+
+```{r Stargazer Table, message=FALSE, echo=FALSE, results='asis'}
+
+stargazer(model_naive, model_complex, model_controllable, model_controllable_geo,
+          title = "Model Comparison",
+          column.labels = c("Naive", "Complex", "Controllable", "Controllable Geo"),
+          dep.var.caption = "Regression Table",
+          dep.var.labels.include = FALSE,
+          single.row = TRUE,  # Combine into a single row
+          type = "latex", # Output in LaTeX format
+          digits=2,
+          font.size = 'small'
+          ) 
+```
+
+# Discussion of Results - Austen
+
+# Discussion of Limitations (Statistical Limitations, Structural Limitations, Ommitted Variable Bias) - Annie
+
+Omitted Variable Bias: Discuss impact of school funding 
+Expect high correlation between location variables and school funding. It would have XYZ effect. 
+
+# Conclusion - Austen
+
+
+
