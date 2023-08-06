@@ -44,7 +44,7 @@ knitr::opts_chunk$set(echo=FALSE, message=FALSE)
 ```
 
 ```{r load data, echo=FALSE, message = FALSE, include=FALSE}
-setwd("C:/Users/Annie's Computer/Documents/DS 203/lab 2/") 
+#setwd("C:/Users/Annie's Computer/Documents/DS 203/lab 2/") 
 
 # Set columns to focus on
 school_columns <- c("Student.Performance.Reading.and.Math",
@@ -137,11 +137,11 @@ my_data <- my_data %>%
 
 # Introduction
 
-In an effort to enhance education in Chicago, we aim to gain an understanding of the factors that contribute to a positive learning experience for students. We seek to identify evidence-based actionable insights for schools and policymakers throughout the Chicago Public School District to make informed decisions so that students can thrive academically. This can range from staffing and leadership decisions, school security code changes, teaching staff rostering, and discipline policies.
+In an effort to enhance education in Chicago, we aim to gain an understanding of the factors that contribute to a positive learning experience for students. We seek to identify evidence-based actionable insights for schools and policymakers throughout the Chicago Public School District to make informed decisions so that students can thrive academically. This can range from staffing and leadership decisions, school security code changes, teaching staff rostering, and disciplinary policies. The following analysis will be a valuable resource for Chicago elementary school superintendents in developing multi-year roadmaps for their respective districts.
 
 # Data
 
-The 2012 School Progress Report Card data from the City of Chicago data portal provides us with a view of the education landscape. It includes the academic performance growth metric ($Growth.Reading.and.Math$), school culture insights ($Suspensions.Percent$,$Suspension.Days$ $Student.Attendance$, $Teacher.Attendance$), and environment variables for which the school was given a grade ($Involved.Families$, $Supportive.Environment$,$Safety$,$Effective.Leaders$, $Ambitious.Instruction$,$Collaborative.Teachers$).
+The 2012 School Progress Report Card data from the City of Chicago data portal provides us with a view of the education landscape. It includes the academic performance growth metric ($Growth.Reading.and.Math$), school culture insights ($Suspensions.Percent$, $Suspension.Days$, $Student.Attendance$, $Teacher.Attendance$, $Years.on.Probation$), and environmental variables for which the school was given a grade ranging from "Very Weak" to "Very Strong": ($Involved.Families$, $Supportive.Environment$,$Safety$,$Effective.Leaders$, $Ambitious.Instruction$,$Collaborative.Teachers$). We will use these features to predict student success by using $Student.Performance.Reading.and.Math$ as our target variable. 
 
 # How Key Concepts are Operationalized
 
@@ -198,9 +198,6 @@ p<- ggplot(my_data, aes(x = Latitude,
                color = Student.Performance.Reading.and.Math)) + geom_point()
 p
 ```
-
-
-
 
 ```{r Correlation Matrix, echo=FALSE}
 # Install the required packages if not already installed
@@ -385,7 +382,7 @@ Each row in our dataframe represents a unique elementary school in Chicago. Beca
 
 Another key assumption in using large linear models is that the predictor variables must have no perfect collinearity. As shown in the correlation matrix below, the strongest correlation between independent variables is between $Collaborative.Teachers$ and $Effective.Leaders$, with a Pearson's Correlation Coefficient of r = 0.78. Because this relationship is still far away from 1, even the strongest relationship between independent variables does not result in near perfect collinearity.
 
-```{r Correlation Matrix 2}
+```{r Correlation Matrix 2, echo=FALSE}
 suppressWarnings(ggpairs(my_data, progress = FALSE))
 ```
 
@@ -395,14 +392,17 @@ Additionally, we can run Variance Inflation Factor (VIF) on our complex model to
 vif(model_complex)
 ```
 
-As we can see from the VIF results above, none of our independent variables have a VIF value of \>= 5. Between the correlation matrix and VIF test, we can conclude our model passes the "no perfect collinearity" assumption.
+As we can see from the VIF results above, none of our independent variables have an adjusted VIF value of >= 5. Between the VIF test and conducting an ocular test with a correlation matrix, we can conclude our model passes the "no perfect collinearity" assumption.
 
 Since our data is IID and has no perfect collinearity, we pass all of our large linear model assumptions and can therefore proceed with the use of a multiple regression model.
 
 
 # Key Modeling Decisions
 
-# Regression Table
+# Results
+
+Table 1 below compares four models: our "Naive" model with just one predictor variable, $XX$, a "Complex" model which includes all our predictor variables, a "Controllable" model with features that could be reformed by Chicago elementary school superintendents, and a "Controllable Geo" model which includes all features of our "Controllable" model plus the geo location variables, like $Latitude$ and $Longitude$.
+
 ```{r Stargazer Table, message=FALSE, echo=FALSE, results='asis'}
 
 stargazer(model_naive, model_complex, model_controllable, model_controllable_geo,
@@ -427,8 +427,16 @@ stargazer(model_naive, model_complex, model_controllable, model_controllable_geo
           ) 
 ```
 
-# Discussion of Results
+In our naive model, $Growth.Reading.and.Math$ is a significant predictor variable that explains XX% of variability in our model. The percent of variability explain by the model, as indicated by the adjusted r-squared, increases to 74-76% after adding more random variables that help explain the remaining unsystematic variability in the model. 
+
+Across all four models, the coefficient of $Growth.Reading.and.Math$ was shown to be significant at a 99% confidence interval. The coefficients of $Student.Attendance$, $Years.on.Probation$, $Involved.Families$, $Safety$, and $Longitude$ were also highly significant (p < 0.01) in all the models these variables were present in. 
 
 # Discussion of Limitations (Statistical Limitations, Structural Limitations)
 
 # Conclusion
+
+Through our analysis, we can conclude a student's success in reading and math is significantly impacted by their school attendance, growth, school status, and of course, environmental factors including family involvement, location and safety. Since student success can benefit society in many ways (reference), from XX to XX, it is crucial for superintendants to use this information to inform future roadmaps for success.As a starting point, superintendants can focus on increasing student attendance, which had the largest coefficient amongst our significant predictor variables. As shown in our best performing model, the "Complex" model, for every percent change in student attendance, student performance on reading and math increases 1.12%. Given these results, Chicago elementary school superintendents could prioritize reforms that help increase student attendance, particularly in southern and eastern parts of the city. 
+
+Increasing student attendance is linked to better performance, but addressing this challenge requires a multifaceted approach. It's essential to create a safer school environment and engage families in valuing education. However, focusing solely on attendance may overlook underlying causes that contribute to poor performance, such as poor safety and low family engagement. Addressing these fundamental issues may not only enhance attendance, but may also reduce the number of years a school is on probation, another significant predictor of student success. By targeting these root causes, we can drive meaningful change in student success across the board.
+
+
