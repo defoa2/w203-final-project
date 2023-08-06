@@ -1,0 +1,454 @@
+---
+title: "Chicago Public Schools Mathematics and Literacy Skills"
+author: 'Austen Lowitz, Annie DeForge, William Teng'
+output:
+  pdf_document:
+    toc: yes
+  output:
+  bookdown::pdf_document2:
+    toc: yes
+    number_sections: yes
+  word_document:
+    toc: yes
+  fig_caption: yes
+  includes:
+    in_header: my_header.tex
+geometry: "left=0.5in,right=0.5in,top=0.5in,bottom=0.5in"
+header-includes:
+ \usepackage{wrapfig}
+ \usepackage{float}
+ \floatplacement{figure}{H}
+---
+
+```{=tex}
+\newpage
+\setcounter{page}{1}
+```
+```{r load packages and set options, include=FALSE}
+library(tidyverse)
+library(magrittr)
+library(stargazer)
+library(sandwich)
+library(lmtest)
+library(dplyr)
+library(ggplot2)
+library(readr)
+library(GGally)
+library(reshape2)
+library(car)
+
+theme_set(theme_bw())
+
+options(tinytex.verbose = TRUE)
+knitr::opts_chunk$set(echo=FALSE, message=FALSE)
+```
+
+```{r load data, echo=FALSE, message = FALSE, include=FALSE}
+#setwd("C:/Users/Annie's Computer/Documents/DS 203/lab 2/") 
+
+# Set columns to focus on
+school_columns <- c("Student.Performance.Reading.and.Math",
+                    "Growth.Overall.Reading.and.Math",
+                    "Student.Attendance.2012...Percent",
+                    "Misconducts.Resulting.in.Suspensions.2012...Percent",
+                    "Average.Days.of.Suspension.2012",
+                    "Teacher.Attendance.2012...Percent",
+                    "Involved.Families",
+                    "Supportive.Environment",
+                    "Safety",
+                    "Effective.Leaders",
+                    "Ambitious.Instruction",
+                    "Collaborative.Teachers",
+                    "Longitude",
+                    "Latitude",
+                    "Years.on.Probation")
+
+
+# Read in initial data : 460 Records
+my_data <- read.csv("chicago-public-schools-elementary-school-progress-report-card-2012-2013-1.csv")[, school_columns] 
+
+
+# Filter out NULLs : 416 Records
+my_data <- my_data[complete.cases(my_data[, school_columns]), ]
+
+# Filter out "Not Enough Data" : 282 Records
+my_data <- subset(my_data, Involved.Families != "Not Enough Data"
+                         & Supportive.Environment != "Not Enough Data"
+                         & Safety != "Not Enough Data"
+                         & Effective.Leaders != "Not Enough Data"
+                         & Ambitious.Instruction != "Not Enough Data"
+                         & Collaborative.Teachers != "Not Enough Data")
+
+# Convert Likert variables into ascending scales (1 = Lowest, N = Highest)
+my_data$Involved.Families <- factor(my_data$Involved.Families, levels = c("Very Weak", "Weak", "Neutral", "Strong", "Very Strong"), labels = c(1, 2, 3, 4, 5))
+
+my_data$Supportive.Environment <- factor(my_data$Supportive.Environment, levels = c("Very Weak", "Weak", "Neutral", "Strong", "Very Strong"), labels = c(1, 2, 3, 4, 5))
+
+my_data$Safety <- factor(my_data$Safety, levels = c("Very Weak", "Weak", "Neutral", "Strong", "Very Strong"), labels = c(1, 2, 3, 4, 5))
+
+my_data$Effective.Leaders <- factor(my_data$Effective.Leaders, levels = c("Very Weak", "Weak", "Neutral", "Strong", "Very Strong"), labels = c(1, 2, 3, 4, 5))
+
+my_data$Ambitious.Instruction <- factor(my_data$Ambitious.Instruction, levels = c("Very Weak", "Weak", "Neutral", "Strong", "Very Strong"), labels = c(1, 2, 3, 4, 5))
+
+my_data$Collaborative.Teachers <- factor(my_data$Collaborative.Teachers, levels = c("Very Weak", "Weak", "Neutral", "Strong", "Very Strong"), labels = c(1, 2, 3, 4, 5))
+
+# Convert numeric columns into numeric
+my_data$Average.Days.of.Suspension.2012 <- as.numeric(my_data$Average.Days.of.Suspension.2012)  
+
+# my_data$Involved.Families <- as.numeric(my_data$Involved.Families)
+# 
+# my_data$Supportive.Environment <- as.numeric(my_data$Supportive.Environment)
+# 
+# my_data$Safety <- as.numeric(my_data$Safety)
+# 
+# my_data$Effective.Leaders <- as.numeric(my_data$Effective.Leaders)
+# 
+# my_data$Ambitious.Instruction <- as.numeric(my_data$Ambitious.Instruction)
+# 
+# my_data$Collaborative.Teachers <- as.numeric(my_data$Collaborative.Teachers)
+
+my_data$Growth.Overall.Reading.and.Math <- as.numeric(gsub("%", "", my_data$Growth.Overall.Reading.and.Math)) / 100
+
+my_data$Student.Attendance.2012...Percent <- as.numeric(gsub("%", "", my_data$Student.Attendance.2012...Percent)) / 100
+
+my_data$Teacher.Attendance.2012...Percent <- as.numeric(gsub("%", "", my_data$Teacher.Attendance.2012...Percent)) / 100
+                    
+my_data$Misconducts.Resulting.in.Suspensions.2012...Percent <- as.numeric(gsub("%", "", my_data$Misconducts.Resulting.in.Suspensions.2012...Percent)) / 100
+
+my_data$Student.Performance.Reading.and.Math <- as.numeric(gsub("%", "", my_data$Student.Performance.Reading.and.Math)) / 100
+
+# Drop nulls in dependent variable. For some reason the code above did not catch all nulls (don't know why)
+my_data <- my_data[complete.cases(my_data$Growth.Overall.Reading.and.Math), ]
+my_data <- my_data[complete.cases(my_data$Student.Performance.Reading.and.Math), ]
+
+# Changing the name of columns because they are too long for the stargazer
+my_data <- my_data %>%
+  rename(Suspensions.Percent = Misconducts.Resulting.in.Suspensions.2012...Percent)
+my_data <- my_data %>%
+  rename(Growth.Reading.and.Math = Growth.Overall.Reading.and.Math)
+my_data <- my_data %>%
+  rename(Student.Attendance = Student.Attendance.2012...Percent)
+my_data <- my_data %>%
+  rename(Suspension.Days = Average.Days.of.Suspension.2012)
+my_data <- my_data %>%
+  rename(Teacher.Attendance = Teacher.Attendance.2012...Percent)
+
+```
+
+# Introduction
+
+In today's educational landscape, data-driven decision-making has emerged as an integral tool for enhancing the student experience. Leveraging the power of data allows educational stakeholders to identify critical factors that contribute to a student's academic success, allowing for effective interventions and informed policy adjustments[^1].
+
+[^1]: Mandinach, E. B., & Gummer, E. (n.d.). Data-driven decision making: Components of the ... - sage journals. <https://journals.sagepub.com/doi/abs/10.1177/016146811511700402>
+
+The Chicago Public School District is amongst the largest and most diverse urban school districts in the US. With that comes unique challenges and opportunities in applying data to drive academic improvement. Currently, only 21% of students had proficient ratings on the statewide reading exam, and only 17% had proficient ratings in math[^2]. Recognizing this potential, our analysis seeks to uncover evidence-based actionable insights to enhance student performance for Chicago's elementary school students.
+
+[^2]: Senior. (2023, June 29). Explore chicago public schools. Niche. <https://www.niche.com/k12/d/chicago-public-schools-il/>
+
+Through this analysis, we aim to provide Chicago elementary school superintendents with a robust framework for developing multi-year roadmaps to enhance academic success. This can include changes from staffing and leadership decisions, school security code changes, and teaching staff rostering to disciplinary policies. The end result will be a more responsive, equitable, and effective educational system that empowers students to thrive academically. This work contributes to the broader movement towards data-informed education, embodying the shared vision of educators, policymakers, and researchers alike to harness the transformative potential of data for the betterment of our schools and communities.
+
+# Data
+
+The 2012 School Progress Report Card data from the City of Chicago data portal provides us with a view of the education landscape. It includes the academic performance growth metric ($Growth.Reading.and.Math$), school culture insights ($Suspensions.Percent$, $Suspension.Days$, $Student.Attendance$, $Teacher.Attendance$, $Years.on.Probation$), and environmental variables for which the school was given a grade ranging from "Very Weak" to "Very Strong": ($Involved.Families$, $Supportive.Environment$,$Safety$,$Effective.Leaders$, $Ambitious.Instruction$,$Collaborative.Teachers$). We will use these features to predict student success by using $Student.Performance.Reading.and.Math$ as our target variable.
+
+# How Key Concepts are Operationalized
+
+# EDA
+
+```{r Distribution and Descriptive Stats, echo=FALSE, include=FALSE}
+
+
+# histogram of attendence variable
+hist(my_data$Student.Attendance)
+hist(my_data$Teacher.Attendance)
+# histogram of discipline variables
+hist(my_data$Suspensions.Percent)
+hist(my_data$Suspension.Days)
+
+# histogram of likert variables
+# hist(my_data$Effective.Leaders)
+# hist(my_data$Involved.Families)
+# hist(my_data$Safety)
+# hist(my_data$Supportive.Environment)
+# hist(my_data$Ambitious.Instruction)
+# hist(my_data$Collaborative.Teachers)
+
+# plots for attendance vs growth
+plot(my_data$Student.Attendance, my_data$Student.Performance.Reading.and.Math)
+plot(my_data$Teacher.Attendance, my_data$Student.Performance.Reading.and.Math)
+
+# plots for discipline vs growth
+plot(my_data$Suspension.Days, my_data$Student.Performance.Reading.and.Math)
+plot(my_data$Suspensions.Percent, my_data$Student.Performance.Reading.and.Math)
+
+# tables of average growth across likert categories
+tapply(my_data$Student.Performance.Reading.and.Math, my_data$Safety, mean)
+tapply(my_data$Student.Performance.Reading.and.Math, my_data$Involved.Families, mean)
+tapply(my_data$Student.Performance.Reading.and.Math, my_data$Supportive.Environment, mean)
+tapply(my_data$Student.Performance.Reading.and.Math, my_data$Effective.Leaders, mean)
+tapply(my_data$Student.Performance.Reading.and.Math, my_data$Ambitious.Instruction, mean)
+tapply(my_data$Student.Performance.Reading.and.Math, my_data$Collaborative.Teachers, mean)
+```
+
+By examining the data, we saw that the likert variables had a normal spread centered around a neutral rating as the most likely ranking for all of the variables. Student and teacher attendance by percentage was also mostly normally distributed. The percentage of misconducts resulting in suspensions was skewed towards the left and the average days of suspension was skewed towards the right. From examining the plots of the continuous variables vs the outcome variable, there were no significant curves in the data that would require transformations.
+
+```{r Location eda, echo=FALSE, fig.keep='last'}
+#location exploration
+# my_data$Student.Performance.Reading.and.Math <- as.numeric(gsub("%", "", my_data$Student.Performance.Reading.and.Math)) * 100
+
+plot(my_data$Latitude, my_data$Longitude)
+plot(my_data$Latitude, my_data$Student.Performance.Reading.and.Math)
+plot(my_data$Longitude, my_data$Student.Performance.Reading.and.Math)
+plot(my_data$Longitude*my_data$Latitude, my_data$Student.Performance.Reading.and.Math)
+
+p<- ggplot(my_data, aes(x = Latitude,
+               y = Longitude,
+               color = Student.Performance.Reading.and.Math)) + geom_point()
+p
+```
+
+```{r Correlation Matrix, echo=FALSE}
+# Install the required packages if not already installed
+if (!requireNamespace("reshape2", quietly = TRUE)) {
+  install.packages("reshape2")
+}
+
+# Compute the correlation between each predictor variable and the dependent variable
+
+# if there is an error on line 162 for x must be numeric, the commented out lines were what fixed the error for me
+subset <- my_data[, setdiff(names(my_data), "Student.Performance.Reading.and.Math")]
+subset <- subset[, unlist(lapply(subset, is.numeric))]
+
+
+# Compute the correlation between each predictor variable and the dependent variable
+correlations <- cor(subset, my_data$Student.Performance.Reading.and.Math)
+
+# Convert the corr matrix to a df for viz
+cor_df <- melt(correlations)
+
+# Reorder the levels of the Var1 variable based on the correlation with the dependent variable
+cor_df$Var1 <- reorder(cor_df$Var1, cor_df$value, FUN = function(x) -abs(x))
+
+# Create a corr heatmap
+heatmap_plot <- ggplot(cor_df, aes(x = Var1, y = Var2, fill = value, label = round(value, 2))) +
+  geom_tile() +
+  geom_text(color = "black", size = 6, vjust = 1) +  # Add correlation value as text
+  scale_fill_gradient(low = "yellow", high = "purple") +
+  labs(title = "Correlation of Independent Vars w/ Respect to Dependent Var") +
+  labs(x = "", y = "") +  # Remove axis labels for Var1 and Var2
+  theme_minimal() +
+  theme(axis.text.x = element_text(angle = 90, hjust = 1)) +
+  coord_fixed()
+
+heatmap_plot <- heatmap_plot + labs(y = "Growth.Overall.Reading.and.Math")
+
+heatmap_plot
+```
+
+```{r, echo=FALSE, include=FALSE}
+dim(my_data)
+```
+
+```{r Create some models, echo=FALSE}
+# Naive Model: A few input variables
+model_naive <- lm(Student.Performance.Reading.and.Math ~ Student.Attendance, data = my_data)
+
+# Complex Model: All the variables
+model_complex <- lm(Student.Performance.Reading.and.Math ~ Growth.Reading.and.Math +
+                    Student.Attendance +
+                    Suspensions.Percent +
+                    Suspension.Days +
+                    Teacher.Attendance +
+                    Involved.Families +
+                    Supportive.Environment +
+                    Safety +
+                    Effective.Leaders +
+                    Ambitious.Instruction +
+                    Collaborative.Teachers +
+                    Longitude +
+                    Latitude + 
+                    Years.on.Probation, data = my_data)
+
+# # Wald Test: Controllable variables
+# model_controllable <- lm(Student.Performance.Reading.and.Math ~ Student.Attendance +
+#                         Teacher.Attendance +
+#                         Involved.Families +
+#                         Supportive.Environment +
+#                         Safety +
+#                         Effective.Leaders +
+#                         Ambitious.Instruction +
+#                         Collaborative.Teachers +
+#                         Years.on.Probation, data = my_data)
+# 
+# # Wald Test: Controllable variables + Geolocation
+# model_controllable_geo <- lm(Student.Performance.Reading.and.Math ~ Student.Attendance +
+#                             Teacher.Attendance +
+#                             Involved.Families +
+#                             Supportive.Environment +
+#                             Safety +
+#                             Effective.Leaders +
+#                             Ambitious.Instruction +
+#                             Collaborative.Teachers +
+#                             Years.on.Probation +
+#                             Longitude + 
+#                             Latitude, data = my_data)
+```
+
+```{r naive summary, echo=FALSE, include=FALSE}
+summary(model_naive)
+```
+
+```{r complex summary, echo=FALSE, include=FALSE}
+summary(model_complex)
+```
+
+```{r nested model test with wald test, echo=FALSE, include = FALSE}
+# Adding teacher attendance to the base model
+mod2 <- lm(Student.Performance.Reading.and.Math~Student.Attendance + Teacher.Attendance, data = my_data)
+
+waldtest(model_naive, mod2, vcov=vcovHC(mod2, type="HC0")) # not significant
+
+# Adding Likert variables one-by-one to the base model by order they appear the report card data set
+# Involved Families
+mod3 <- lm(Student.Performance.Reading.and.Math~Student.Attendance + Involved.Families , data = my_data)
+
+waldtest(model_naive, mod3, vcov=vcovHC(mod3, type="HC0")) # significant
+
+# Supportive Environment
+mod4 <- lm(Student.Performance.Reading.and.Math~Student.Attendance + Involved.Families + Supportive.Environment, data = my_data)
+
+waldtest(mod3, mod4, vcov=vcovHC(mod4, type="HC0")) # not significant
+
+# Safety
+mod5 <- lm(Student.Performance.Reading.and.Math~Student.Attendance + Involved.Families + Safety, data = my_data)
+
+waldtest(mod3, mod5, vcov=vcovHC(mod5, type="HC0")) # significant
+
+# Effective Leaders
+mod6 <- lm(Student.Performance.Reading.and.Math~Student.Attendance + Involved.Families + Safety + Effective.Leaders, data = my_data)
+
+waldtest(mod5, mod6, vcov=vcovHC(mod6, type="HC0")) # not significant
+
+# Ambitious Instruction
+
+mod7 <- lm(Student.Performance.Reading.and.Math~Student.Attendance + Involved.Families + Safety + Ambitious.Instruction, data = my_data)
+
+waldtest(mod5, mod7, vcov=vcovHC(mod7, type="HC0")) # not significant
+
+# Collaborative Teachers
+mod8 <- lm(Student.Performance.Reading.and.Math~Student.Attendance + Involved.Families + Safety + Collaborative.Teachers, data = my_data)
+
+waldtest(mod5, mod8, vcov=vcovHC(mod8, type="HC0")) # not significant
+
+# Discipline Variables
+mod9 <- lm(Student.Performance.Reading.and.Math~Student.Attendance + Involved.Families + Safety + Suspension.Days + Suspensions.Percent, data = my_data)
+
+waldtest(mod5, mod9,  vcov=vcovHC(mod9, type="HC0")) # not significant
+
+# years on probation
+mod10 <- lm(Student.Performance.Reading.and.Math~Student.Attendance + Involved.Families + Safety + Years.on.Probation, data=my_data)
+
+waldtest(mod5, mod10,  vcov=vcovHC(mod10, type="HC0")) # significant
+
+#growth variable
+mod11 <- lm(Student.Performance.Reading.and.Math~Student.Attendance + Involved.Families + Safety + Years.on.Probation + Growth.Reading.and.Math, data=my_data)
+
+waldtest(mod10, mod11,  vcov=vcovHC(mod11, type="HC0")) # significant
+
+# location
+# latitude
+mod12 <- lm(Student.Performance.Reading.and.Math~Student.Attendance + Involved.Families + Safety + Years.on.Probation + Growth.Reading.and.Math + Latitude, data=my_data)
+
+waldtest(mod11, mod12,  vcov=vcovHC(mod12, type="HC0")) # not significant
+
+# longitude
+mod13 <- lm(Student.Performance.Reading.and.Math~Student.Attendance + Involved.Families + Safety + Years.on.Probation + Growth.Reading.and.Math + Longitude, data=my_data)
+
+waldtest(mod11, mod13,  vcov=vcovHC(mod12, type="HC0")) # significant
+
+# assigning optimized to model names
+model_controllable <- mod11
+model_controllable_geo <- mod13
+```
+
+```{r controllable summary, echo=FALSE, include=FALSE}
+summary(model_controllable)
+```
+
+```{r geo summary, echo=FALSE, include=FALSE}
+summary(model_controllable_geo)
+```
+
+# Assumptions
+
+Given our large sample size (218 observations), we can utilize a multiple regression model to assess the key drivers on student success, assuming that our data meets the following criteria: The data must be Independent and Identically Distributed (IID), there must be no perfect collinearity, and appropriate transformations need to be executed (if necessary) to ensure we meet the linear conditional expectation assumption.
+
+[**IID**]{.underline}
+
+Each row in our dataframe represents a unique elementary school in Chicago. Because the data includes the entire population of elementary schools in Chicago rather than a specific sample, we have reduced concerns related to sampling bias since every school is represented in the dataset. Since we are analyzing the entire population of elementary schools in Chicago, we assume that the schools operate under similar conditions and follow similar educational standards and policies. This supports the notion that our observations are drawn from the same distribution, therefore meeting the IID assumption. That said, our scope is limited towards only being able to make generalizations about Chicago public schools.
+
+[**No Perfect Collinearity**]{.underline}
+
+Another key assumption in using large linear models is that the predictor variables must have no perfect collinearity. As shown in the correlation matrix below, the strongest correlation between independent variables is between $Collaborative.Teachers$ and $Effective.Leaders$, with a Pearson's Correlation Coefficient of r = 0.78. Because this relationship is still far away from 1, even the strongest relationship between independent variables does not result in near perfect collinearity.
+
+```{r Correlation Matrix 2, echo=FALSE}
+suppressWarnings(ggpairs(my_data, progress = FALSE))
+```
+
+Additionally, we can run Variance Inflation Factor (VIF) on our complex model to better understand how much the variance of the various beta coefficients increases due to multicollinearity. A VIF of less than 5 is indicative of no perfect collineaity. As we can see from the VIF results above, none of our independent variabels have a VIF value of \>= 5. Between the correlation matrix and VIF test, we can conclude our model passes the "no perfect collinearity" assumption.
+
+```{r Assessing Multicollinearity}
+vif(model_complex)
+```
+
+As we can see from the VIF results above, none of our independent variables have an adjusted VIF value of \>= 5. Between the VIF test and conducting an ocular test with a correlation matrix, we can conclude our model passes the "no perfect collinearity" assumption.
+
+Since our data is IID and has no perfect collinearity, we pass all of our large linear model assumptions and can therefore proceed with the use of a multiple regression model.
+
+# Key Modeling Decisions
+
+# Results
+
+Table 1 below compares four models: our "Naive" model with just one predictor variable, $XX$, a "Complex" model which includes all our predictor variables, a "Controllable" model with features that could be reformed by Chicago elementary school superintendents, and a "Controllable Geo" model which includes all features of our "Controllable" model plus the geo location variables, like $Latitude$ and $Longitude$.
+
+```{r Stargazer Table, message=FALSE, echo=FALSE, results='asis'}
+
+stargazer(model_naive, model_complex, model_controllable, model_controllable_geo,
+          title = "Model Comparison",
+          column.labels = c("Naive", "Complex", "Controllable", "Controllable Geo"),
+          dep.var.caption = "Regression Table",
+          dep.var.labels.include = FALSE,
+          omit = c("Involved.Families", "Supportive.Environment", "Safety", "Effective.Leaders", "Ambitious.Instruction", "Collaborative.Teachers"),
+          add.lines = list(
+            c("Involved Families", "", "\\checkmark", "\\checkmark","\\checkmark"),
+            c("Supportive Environment", "", "\\checkmark", "", ""),
+            c("Safety", "", "\\checkmark",  "\\checkmark","\\checkmark"),
+            c("Effective Leaders", "", "\\checkmark", "", ""),
+            c("Ambitious Instuction", "", "\\checkmark", "",""),
+            c("Collaborative Teachers", "", "\\checkmark", "",""),
+            "\\hline"
+          ), 
+          single.row = TRUE,  # Combine into a single row
+          type = "latex", # Output in LaTeX format
+          digits=2,
+          font.size = 'small'
+          ) 
+```
+
+In our naive model, $Growth.Reading.and.Math$ is a significant predictor variable that explains XX% of variability in our model. The percent of variability explain by the model, as indicated by the adjusted r-squared, increases to 74-76% after adding more random variables that help explain the remaining unsystematic variability in the model.
+
+Across all four models, the coefficient of $Growth.Reading.and.Math$ was shown to be significant at a 99% confidence interval. The coefficients of $Student.Attendance$, $Years.on.Probation$, $Involved.Families$, $Safety$, and $Longitude$ were also highly significant (p \< 0.01) in all the models these variables were present in.
+
+# Discussion of Limitations (Statistical Limitations, Structural Limitations)
+
+# Conclusion
+
+Through our analysis, we can conclude a student's success in reading and math is significantly impacted by their school attendance, growth, school status, and of course, environmental factors including family involvement, location, and safety.
+
+Since student success can benefit society in many ways, from increasing tax revenue to creating a more vibrant society[^3], it is crucial for superintendents to use this information to inform future roadmaps for success. As a starting point, superintendents can focus on increasing student attendance, which had the largest coefficient amongst our significant predictor variables. As shown in our best-performing model, the "Complex" model, for every percent change in student attendance, student performance on reading and math increases 1.12%. Given these results, Chicago elementary school superintendents could prioritize reforms that help increase student attendance, particularly in southern and eastern parts of the city.
+
+That said, addressing the challenge of student attendance requires a multifaceted approach; one that goes beyond simply boosting attendance numbers. It calls for initiatives that foster a safer school environment, cultivate family engagement, and address underlying issues such as safety concerns that may be hindering attendance in the first place. These efforts can resonate beyond attendance, potentially reducing the number of years a school is on probation—another significant predictor of student success in our study.
+
+In conclusion, our study serves as a testament to the power of data-driven decision-making in education. By delving into the complex interplay of factors that contribute to student success, we have provided actionable insights that can be harnessed to foster a more enriching educational experience for elementary school students in Chicago.
+
+[^3]: How do college graduates benefit society at large?. APLU. (2023, March 1). https://www.aplu.org/our-work/4-policy-and-advocacy/publicuvalues/societal-benefits/ 
