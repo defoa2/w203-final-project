@@ -133,6 +133,9 @@ my_data <- my_data %>%
 my_data <- my_data %>%
   rename(Teacher.Attendance = Teacher.Attendance.2012...Percent)
 
+# Create new dependent variable: 
+my_data$Student.Success <- (my_data$Student.Performance.Reading.and.Math + my_data$Growth.Reading.and.Math) / 2
+
 ```
 
 # Introduction
@@ -149,7 +152,7 @@ Through this analysis, we aim to provide Chicago elementary school superintenden
 
 # Data
 
-The 2012 School Progress Report Card data from the City of Chicago data portal provides us with a view of the education landscape. It includes the academic performance growth metric ($Growth.Reading.and.Math$), school culture insights ($Suspensions.Percent$, $Suspension.Days$, $Student.Attendance$, $Teacher.Attendance$, $Years.on.Probation$), and environmental variables for which the school was given a grade ranging from "Very Weak" to "Very Strong": ($Involved.Families$, $Supportive.Environment$,$Safety$,$Effective.Leaders$, $Ambitious.Instruction$,$Collaborative.Teachers$). We will use these features to predict student success by using $Student.Performance.Reading.and.Math$ as our target variable.
+The 2012 School Progress Report Card data from the City of Chicago data portal provides us with a view of the education landscape. It includes the academic performance growth metric ($Growth.Reading.and.Math$), school culture insights ($Suspensions.Percent$, $Suspension.Days$, $Student.Attendance$, $Teacher.Attendance$, $Years.on.Probation$), and environmental variables for which the school was given a grade ranging from "Very Weak" to "Very Strong": ($Involved.Families$, $Supportive.Environment$,$Safety$,$Effective.Leaders$, $Ambitious.Instruction$,$Collaborative.Teachers$). We will use these features to predict student success by using $Student.Success$ as our target variable.
 
 # How Key Concepts are Operationalized
 
@@ -174,54 +177,52 @@ hist(my_data$Suspension.Days)
 # hist(my_data$Collaborative.Teachers)
 
 # plots for attendance vs growth
-plot(my_data$Student.Attendance, my_data$Student.Performance.Reading.and.Math)
-plot(my_data$Teacher.Attendance, my_data$Student.Performance.Reading.and.Math)
+plot(my_data$Student.Attendance, my_data$Student.Success)
+plot(my_data$Teacher.Attendance, my_data$Student.Success)
 
 # plots for discipline vs growth
-plot(my_data$Suspension.Days, my_data$Student.Performance.Reading.and.Math)
-plot(my_data$Suspensions.Percent, my_data$Student.Performance.Reading.and.Math)
+plot(my_data$Suspension.Days, my_data$Student.Success)
+plot(my_data$Suspensions.Percent, my_data$Student.Success)
 
 # tables of average growth across likert categories
-tapply(my_data$Student.Performance.Reading.and.Math, my_data$Safety, mean)
-tapply(my_data$Student.Performance.Reading.and.Math, my_data$Involved.Families, mean)
-tapply(my_data$Student.Performance.Reading.and.Math, my_data$Supportive.Environment, mean)
-tapply(my_data$Student.Performance.Reading.and.Math, my_data$Effective.Leaders, mean)
-tapply(my_data$Student.Performance.Reading.and.Math, my_data$Ambitious.Instruction, mean)
-tapply(my_data$Student.Performance.Reading.and.Math, my_data$Collaborative.Teachers, mean)
+tapply(my_data$Student.Success, my_data$Safety, mean)
+tapply(my_data$Student.Success, my_data$Involved.Families, mean)
+tapply(my_data$Student.Success, my_data$Supportive.Environment, mean)
+tapply(my_data$Student.Success, my_data$Effective.Leaders, mean)
+tapply(my_data$Student.Success, my_data$Ambitious.Instruction, mean)
+tapply(my_data$Student.Success, my_data$Collaborative.Teachers, mean)
 ```
 
 By examining the data, we saw that the likert variables had a normal spread centered around a neutral rating as the most likely ranking for all of the variables. Student and teacher attendance by percentage was also mostly normally distributed. The percentage of misconducts resulting in suspensions was skewed towards the left and the average days of suspension was skewed towards the right. From examining the plots of the continuous variables vs the outcome variable, there were no significant curves in the data that would require transformations.
 
 ```{r Location eda, echo=FALSE, fig.keep='last'}
 #location exploration
-# my_data$Student.Performance.Reading.and.Math <- as.numeric(gsub("%", "", my_data$Student.Performance.Reading.and.Math)) * 100
+# my_data$Student.Success <- as.numeric(gsub("%", "", my_data$Student.Success)) * 100
 
 plot(my_data$Latitude, my_data$Longitude)
-plot(my_data$Latitude, my_data$Student.Performance.Reading.and.Math)
-plot(my_data$Longitude, my_data$Student.Performance.Reading.and.Math)
-plot(my_data$Longitude*my_data$Latitude, my_data$Student.Performance.Reading.and.Math)
+plot(my_data$Latitude, my_data$Student.Success)
+plot(my_data$Longitude, my_data$Student.Success)
+plot(my_data$Longitude*my_data$Latitude, my_data$Student.Success)
 
 p<- ggplot(my_data, aes(x = Latitude,
                y = Longitude,
-               color = Student.Performance.Reading.and.Math)) + geom_point()
+               color = Student.Success)) + geom_point()
 p
 ```
 
 ```{r Correlation Matrix, echo=FALSE}
-# Install the required packages if not already installed
-if (!requireNamespace("reshape2", quietly = TRUE)) {
-  install.packages("reshape2")
-}
+# Exclude the specific columns from the subset
+subset <- my_data[, setdiff(names(my_data), c("Student.Success", "Student.Performance.Reading.and.Math", "Growth.Reading.and.Math"))]
 
-# Compute the correlation between each predictor variable and the dependent variable
-
-# if there is an error on line 162 for x must be numeric, the commented out lines were what fixed the error for me
-subset <- my_data[, setdiff(names(my_data), "Student.Performance.Reading.and.Math")]
+# Only include numeric columns
 subset <- subset[, unlist(lapply(subset, is.numeric))]
 
-
 # Compute the correlation between each predictor variable and the dependent variable
-correlations <- cor(subset, my_data$Student.Performance.Reading.and.Math)
+correlations <- cor(subset, my_data$Student.Success)
+
+# Load the required packages
+library(ggplot2)
+library(reshape2)
 
 # Convert the corr matrix to a df for viz
 cor_df <- melt(correlations)
@@ -240,7 +241,7 @@ heatmap_plot <- ggplot(cor_df, aes(x = Var1, y = Var2, fill = value, label = rou
   theme(axis.text.x = element_text(angle = 90, hjust = 1)) +
   coord_fixed()
 
-heatmap_plot <- heatmap_plot + labs(y = "Growth.Overall.Reading.and.Math")
+heatmap_plot <- heatmap_plot + labs(y = "Student.Success")
 
 heatmap_plot
 ```
@@ -251,10 +252,10 @@ dim(my_data)
 
 ```{r Create some models, echo=FALSE}
 # Naive Model: A few input variables
-model_naive <- lm(Student.Performance.Reading.and.Math ~ Student.Attendance, data = my_data)
+model_naive <- lm(Student.Success ~ Student.Attendance, data = my_data)
 
 # Complex Model: All the variables
-model_complex <- lm(Student.Performance.Reading.and.Math ~ Growth.Reading.and.Math +
+model_complex <- lm(Student.Success ~ Growth.Reading.and.Math +
                     Student.Attendance +
                     Suspensions.Percent +
                     Suspension.Days +
@@ -270,7 +271,7 @@ model_complex <- lm(Student.Performance.Reading.and.Math ~ Growth.Reading.and.Ma
                     Years.on.Probation, data = my_data)
 
 # # Wald Test: Controllable variables
-# model_controllable <- lm(Student.Performance.Reading.and.Math ~ Student.Attendance +
+# model_controllable <- lm(Student.Success ~ Student.Attendance +
 #                         Teacher.Attendance +
 #                         Involved.Families +
 #                         Supportive.Environment +
@@ -281,7 +282,7 @@ model_complex <- lm(Student.Performance.Reading.and.Math ~ Growth.Reading.and.Ma
 #                         Years.on.Probation, data = my_data)
 # 
 # # Wald Test: Controllable variables + Geolocation
-# model_controllable_geo <- lm(Student.Performance.Reading.and.Math ~ Student.Attendance +
+# model_controllable_geo <- lm(Student.Success ~ Student.Attendance +
 #                             Teacher.Attendance +
 #                             Involved.Families +
 #                             Supportive.Environment +
@@ -304,65 +305,65 @@ summary(model_complex)
 
 ```{r nested model test with wald test, echo=FALSE, include = FALSE}
 # Adding teacher attendance to the base model
-mod2 <- lm(Student.Performance.Reading.and.Math~Student.Attendance + Teacher.Attendance, data = my_data)
+mod2 <- lm(Student.Success~Student.Attendance + Teacher.Attendance, data = my_data)
 
 waldtest(model_naive, mod2, vcov=vcovHC(mod2, type="HC0")) # not significant
 
 # Adding Likert variables one-by-one to the base model by order they appear the report card data set
 # Involved Families
-mod3 <- lm(Student.Performance.Reading.and.Math~Student.Attendance + Involved.Families , data = my_data)
+mod3 <- lm(Student.Success~Student.Attendance + Involved.Families , data = my_data)
 
 waldtest(model_naive, mod3, vcov=vcovHC(mod3, type="HC0")) # significant
 
 # Supportive Environment
-mod4 <- lm(Student.Performance.Reading.and.Math~Student.Attendance + Involved.Families + Supportive.Environment, data = my_data)
+mod4 <- lm(Student.Success~Student.Attendance + Involved.Families + Supportive.Environment, data = my_data)
 
 waldtest(mod3, mod4, vcov=vcovHC(mod4, type="HC0")) # not significant
 
 # Safety
-mod5 <- lm(Student.Performance.Reading.and.Math~Student.Attendance + Involved.Families + Safety, data = my_data)
+mod5 <- lm(Student.Success~Student.Attendance + Involved.Families + Safety, data = my_data)
 
 waldtest(mod3, mod5, vcov=vcovHC(mod5, type="HC0")) # significant
 
 # Effective Leaders
-mod6 <- lm(Student.Performance.Reading.and.Math~Student.Attendance + Involved.Families + Safety + Effective.Leaders, data = my_data)
+mod6 <- lm(Student.Success~Student.Attendance + Involved.Families + Safety + Effective.Leaders, data = my_data)
 
 waldtest(mod5, mod6, vcov=vcovHC(mod6, type="HC0")) # not significant
 
 # Ambitious Instruction
 
-mod7 <- lm(Student.Performance.Reading.and.Math~Student.Attendance + Involved.Families + Safety + Ambitious.Instruction, data = my_data)
+mod7 <- lm(Student.Success~Student.Attendance + Involved.Families + Safety + Ambitious.Instruction, data = my_data)
 
 waldtest(mod5, mod7, vcov=vcovHC(mod7, type="HC0")) # not significant
 
 # Collaborative Teachers
-mod8 <- lm(Student.Performance.Reading.and.Math~Student.Attendance + Involved.Families + Safety + Collaborative.Teachers, data = my_data)
+mod8 <- lm(Student.Success~Student.Attendance + Involved.Families + Safety + Collaborative.Teachers, data = my_data)
 
 waldtest(mod5, mod8, vcov=vcovHC(mod8, type="HC0")) # not significant
 
 # Discipline Variables
-mod9 <- lm(Student.Performance.Reading.and.Math~Student.Attendance + Involved.Families + Safety + Suspension.Days + Suspensions.Percent, data = my_data)
+mod9 <- lm(Student.Success~Student.Attendance + Involved.Families + Safety + Suspension.Days + Suspensions.Percent, data = my_data)
 
 waldtest(mod5, mod9,  vcov=vcovHC(mod9, type="HC0")) # not significant
 
 # years on probation
-mod10 <- lm(Student.Performance.Reading.and.Math~Student.Attendance + Involved.Families + Safety + Years.on.Probation, data=my_data)
+mod10 <- lm(Student.Success~Student.Attendance + Involved.Families + Safety + Years.on.Probation, data=my_data)
 
 waldtest(mod5, mod10,  vcov=vcovHC(mod10, type="HC0")) # significant
 
 #growth variable
-mod11 <- lm(Student.Performance.Reading.and.Math~Student.Attendance + Involved.Families + Safety + Years.on.Probation + Growth.Reading.and.Math, data=my_data)
+mod11 <- lm(Student.Success~Student.Attendance + Involved.Families + Safety + Years.on.Probation + Growth.Reading.and.Math, data=my_data)
 
 waldtest(mod10, mod11,  vcov=vcovHC(mod11, type="HC0")) # significant
 
 # location
 # latitude
-mod12 <- lm(Student.Performance.Reading.and.Math~Student.Attendance + Involved.Families + Safety + Years.on.Probation + Growth.Reading.and.Math + Latitude, data=my_data)
+mod12 <- lm(Student.Success~Student.Attendance + Involved.Families + Safety + Years.on.Probation + Growth.Reading.and.Math + Latitude, data=my_data)
 
 waldtest(mod11, mod12,  vcov=vcovHC(mod12, type="HC0")) # not significant
 
 # longitude
-mod13 <- lm(Student.Performance.Reading.and.Math~Student.Attendance + Involved.Families + Safety + Years.on.Probation + Growth.Reading.and.Math + Longitude, data=my_data)
+mod13 <- lm(Student.Success~Student.Attendance + Involved.Families + Safety + Years.on.Probation + Growth.Reading.and.Math + Longitude, data=my_data)
 
 waldtest(mod11, mod13,  vcov=vcovHC(mod12, type="HC0")) # significant
 
