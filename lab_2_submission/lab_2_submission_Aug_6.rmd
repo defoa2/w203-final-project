@@ -20,6 +20,11 @@ header-includes:
  \floatplacement{figure}{H}
 ---
 
+```{r}
+tinytex::install_tinytex()
+```
+
+
 ```{=tex}
 \newpage
 \setcounter{page}{1}
@@ -36,6 +41,7 @@ library(readr)
 library(GGally)
 library(reshape2)
 library(car)
+library(gridExtra)
 
 theme_set(theme_bw())
 
@@ -61,7 +67,8 @@ school_columns <- c("Student.Performance.Reading.and.Math",
                     "Collaborative.Teachers",
                     "Longitude",
                     "Latitude",
-                    "Years.on.Probation")
+                    "Years.on.Probation",
+                    "School.Track")
 
 
 # Read in initial data : 460 Records
@@ -203,11 +210,11 @@ plot(my_data$Longitude*my_data$Latitude, my_data$Student.Success)
 p<- ggplot(my_data, aes(x = Latitude,
                y = Longitude,
                color = Student.Success)) + geom_point()
-p
 ```
 
-```{r}
-ggplot(my_data, aes(x = Student.Attendance, y = Student.Success)) +
+```{r learning environment plot, echo=FALSE}
+
+p1 <- ggplot(my_data, aes(x = Student.Attendance, y = Student.Success)) +
   geom_point(color = "blue", alpha = 0.5) +  # Scatter plot with blue points
   geom_smooth(method = "lm", color = "red", se = FALSE) + # Linear regression line in red
   labs(
@@ -217,14 +224,41 @@ ggplot(my_data, aes(x = Student.Attendance, y = Student.Success)) +
   ) +
   theme_minimal() +
   theme(
-    plot.title = element_text(hjust = 0.5, size = 16, face = "bold"),
-    axis.title.x = element_text(size = 12, face = "bold"),
-    axis.title.y = element_text(size = 12, face = "bold")
+    plot.title = element_text(hjust = 0.5, size = 12, face = "bold"),
+    axis.title.x = element_text(size = 12),
+    axis.title.y = element_text(size = 12)
   )
+
+grade <- rep(c("Very Weak", "Weak", "Neutral", "Strong", "Very Strong"), 6)
+grade <- factor(grade, levels = c("Very Weak", "Weak", "Neutral", "Strong", "Very Strong"))
+
+variable <- c(rep("Involved Families", 5), rep("Supportive Environment", 5), rep("Safety", 5), rep("Effective Leaders", 5), rep("Ambitious Instructions", 5), rep("Collaborative Teachers", 5))
+
+mean <- tapply(my_data$Student.Success, my_data$Involved.Families, mean)
+mean <- c(mean, tapply(my_data$Student.Success, my_data$Supportive.Environment, mean))
+mean <- c(mean, tapply(my_data$Student.Success, my_data$Safety, mean))
+mean <- c(mean, tapply(my_data$Student.Success, my_data$Effective.Leaders, mean))
+mean <- c(mean, tapply(my_data$Student.Success, my_data$Ambitious.Instruction, mean))
+mean <- c(mean, tapply(my_data$Student.Success, my_data$Collaborative.Teachers, mean))
+
+d <- data.frame(variable, grade, mean)
+
+p2 <- ggplot(d, aes(fill = variable, y = mean, x = grade)) +
+  geom_bar(position = "dodge", stat = "identity") +
+  labs(
+    title = "Mean Student Success Pct by Learning Environment Variable",
+    y = "Mean Student Success Pct" # Naming the y-axis
+  ) +
+  theme_minimal() +
+  theme(
+    plot.title = element_text(hjust = 0.5, size = 12, face = "bold"),
+    axis.title.x = element_text(size = 12),
+    axis.title.y = element_text(size = 12)
+  )
+grid.arrange(p1, p2)
 ```
 
-
-```{r Correlation Matrix, echo=FALSE}
+```{r Correlation Matrix, echo=FALSE, include=FALSE}
 # Exclude the specific columns from the subset
 subset <- my_data[, setdiff(names(my_data), c("Student.Success", "Student.Performance.Reading.and.Math", "Growth.Reading.and.Math"))]
 
@@ -269,7 +303,7 @@ dim(my_data)
 model_naive <- lm(Student.Success ~ Student.Attendance, data = my_data)
 
 # Complex Model: All the variables
-model_complex <- lm(Student.Success ~ Growth.Reading.and.Math +
+model_complex <- lm(Student.Success ~
                     Student.Attendance +
                     Suspensions.Percent +
                     Suspension.Days +
@@ -282,9 +316,9 @@ model_complex <- lm(Student.Success ~ Growth.Reading.and.Math +
                     Collaborative.Teachers +
                     Longitude +
                     Latitude + 
+                    School.Track +
                     Years.on.Probation, data = my_data)
 
-# Wald Test: Controllable variables
 learning_environment <- lm(Student.Success ~ Student.Attendance +
                         Teacher.Attendance +
                         Involved.Families +
@@ -294,12 +328,14 @@ learning_environment <- lm(Student.Success ~ Student.Attendance +
                         Ambitious.Instruction +
                         Collaborative.Teachers, data = my_data)
 
-# Wald Test: Controllable variables + Geolocation
-controls <- lm(Student.Success ~ Suspensions.Percent +
-                            Suspension.Days + 
-                            Years.on.Probation +
-                            Longitude +
-                            Latitude, data = my_data)
+# Significant predictors plus other significant variables from complex model unrelated to learning_environment
+controls <- lm(Student.Success ~ Student.Attendance +
+                            Teacher.Attendance +
+                            Involved.Families +
+                            Supportive.Environment +
+                            Safety +
+                            School.Track +
+                            Years.on.Probation, data = my_data)
 ```
 
 ```{r naive summary, echo=FALSE, include=FALSE}
@@ -311,99 +347,67 @@ summary(model_complex)
 ```
 
 ```{r nested model test with wald test, echo=FALSE, include = FALSE}
-# Adding teacher attendance to the base model
+# Teacher Attendance
 mod2 <- lm(Student.Success~Student.Attendance + Teacher.Attendance, data = my_data)
 
-waldtest(model_naive, mod2, vcov=vcovHC(mod2, type="HC0")) # not significant
+waldtest(model_naive, mod2, vcov=vcovHC(mod2, type="HC0")) # significant
 
-# Adding Likert variables one-by-one to the base model by order they appear the report card data set
 # Involved Families
-mod3 <- lm(Student.Success~Student.Attendance + Involved.Families , data = my_data)
+mod3 <- lm(Student.Success~Student.Attendance + Teacher.Attendance + Involved.Families , data = my_data)
 
-waldtest(model_naive, mod3, vcov=vcovHC(mod3, type="HC0")) # significant
+waldtest(mod2, mod3, vcov=vcovHC(mod3, type="HC0")) # significant
 
 # Supportive Environment
-mod4 <- lm(Student.Success~Student.Attendance + Involved.Families + Supportive.Environment, data = my_data)
+mod4 <- lm(Student.Success~Student.Attendance + Teacher.Attendance + Involved.Families + Supportive.Environment, data = my_data)
 
-waldtest(mod3, mod4, vcov=vcovHC(mod4, type="HC0")) # not significant
+waldtest(mod3, mod4, vcov=vcovHC(mod4, type="HC0")) # significant
 
 # Safety
-mod5 <- lm(Student.Success~Student.Attendance + Involved.Families + Safety, data = my_data)
+mod5 <- lm(Student.Success~Student.Attendance + Teacher.Attendance + Involved.Families + Supportive.Environment + Safety, data = my_data)
 
-waldtest(mod3, mod5, vcov=vcovHC(mod5, type="HC0")) # significant
+waldtest(mod4, mod5, vcov=vcovHC(mod5, type="HC0")) # significant
 
 # Effective Leaders
-mod6 <- lm(Student.Success~Student.Attendance + Involved.Families + Safety + Effective.Leaders, data = my_data)
+mod6 <- lm(Student.Success~Student.Attendance + Teacher.Attendance + Involved.Families + Supportive.Environment + Safety + Effective.Leaders, data = my_data)
 
 waldtest(mod5, mod6, vcov=vcovHC(mod6, type="HC0")) # not significant
 
 # Ambitious Instruction
-
-mod7 <- lm(Student.Success~Student.Attendance + Involved.Families + Safety + Ambitious.Instruction, data = my_data)
+mod7 <- lm(Student.Success~Student.Attendance + Teacher.Attendance + Involved.Families + Supportive.Environment + Safety + Ambitious.Instruction, data = my_data)
 
 waldtest(mod5, mod7, vcov=vcovHC(mod7, type="HC0")) # not significant
 
 # Collaborative Teachers
-mod8 <- lm(Student.Success~Student.Attendance + Involved.Families + Safety + Collaborative.Teachers, data = my_data)
+mod8 <- lm(Student.Success~Student.Attendance + Teacher.Attendance + Involved.Families + Supportive.Environment + Safety + Collaborative.Teachers, data = my_data)
 
 waldtest(mod5, mod8, vcov=vcovHC(mod8, type="HC0")) # not significant
 
 # Discipline Variables
-mod9 <- lm(Student.Success~Student.Attendance + Involved.Families + Safety + Suspension.Days + Suspensions.Percent, data = my_data)
+mod9 <- lm(Student.Success~Student.Attendance + Teacher.Attendance + Involved.Families + Supportive.Environment + Safety + Suspension.Days + Suspensions.Percent, data = my_data)
 
 waldtest(mod5, mod9,  vcov=vcovHC(mod9, type="HC0")) # not significant
 
 # years on probation
-mod10 <- lm(Student.Success~Student.Attendance + Involved.Families + Safety + Years.on.Probation, data=my_data)
+mod10 <- lm(Student.Success~Student.Attendance + Teacher.Attendance + Involved.Families + Supportive.Environment + Safety + Years.on.Probation, data=my_data)
 
 waldtest(mod5, mod10,  vcov=vcovHC(mod10, type="HC0")) # significant
 
-#growth variable
-mod11 <- lm(Student.Success~Student.Attendance + Involved.Families + Safety + Years.on.Probation + Growth.Reading.and.Math, data=my_data)
-
-waldtest(mod10, mod11,  vcov=vcovHC(mod11, type="HC0")) # significant
-
-# location
 # latitude
-mod12 <- lm(Student.Success~Student.Attendance + Involved.Families + Safety + Years.on.Probation + Growth.Reading.and.Math + Latitude, data=my_data)
+mod11 <- lm(Student.Success~Student.Attendance + Teacher.Attendance + Involved.Families + Supportive.Environment + Safety + Years.on.Probation + Latitude, data=my_data)
 
-waldtest(mod11, mod12,  vcov=vcovHC(mod12, type="HC0")) # not significant
+waldtest(mod10, mod11,  vcov=vcovHC(mod11, type="HC0")) # not significant
 
 # longitude
-mod13 <- lm(Student.Success~Student.Attendance + Involved.Families + Safety + Years.on.Probation + Growth.Reading.and.Math + Longitude, data=my_data)
+mod12 <- lm(Student.Success~Student.Attendance + Teacher.Attendance + Involved.Families + Supportive.Environment + Safety + Years.on.Probation + Longitude, data=my_data)
 
-waldtest(mod11, mod13,  vcov=vcovHC(mod12, type="HC0")) # significant
+waldtest(mod10, mod12,  vcov=vcovHC(mod12, type="HC0")) # not significant
 
-# assigning optimized to model names
-model_controllable <- mod11
-model_controllable_geo <- mod13
+# School.Track
+mod13 <- lm(Student.Success~Student.Attendance + Teacher.Attendance + Involved.Families + Supportive.Environment + Safety + Years.on.Probation + School.Track, data=my_data)
+
+waldtest(mod10, mod13,  vcov=vcovHC(mod13, type="HC0")) # not significant
+
 ```
-
-# Assumptions
-
-Given our large sample size (218 observations), we can utilize a multiple regression model to assess the key drivers on student success, assuming that our data meets the following criteria: The data must be Independent and Identically Distributed (IID), there must be no perfect collinearity, and appropriate transformations need to be executed (if necessary) to ensure we meet the linear conditional expectation assumption.
-
-[**IID**]{.underline}
-
-Each row in our dataframe represents a unique elementary school in Chicago. Because the data includes the entire population of elementary schools in Chicago rather than a specific sample, we have reduced concerns related to sampling bias since every school is represented in the dataset. Since we are analyzing the entire population of elementary schools in Chicago, we assume that the schools operate under similar conditions and follow similar educational standards and policies. This supports the notion that our observations are drawn from the same distribution, therefore meeting the IID assumption. That said, our scope is limited towards only being able to make generalizations about Chicago public schools.
-
-[**No Perfect Collinearity**]{.underline}
-
-Another key assumption in using large linear models is that the predictor variables must have no perfect collinearity. As shown in the correlation matrix below, the strongest correlation between independent variables is between $Collaborative.Teachers$ and $Effective.Leaders$, with a Pearson's Correlation Coefficient of r = 0.78. Because this relationship is still far away from 1, even the strongest relationship between independent variables does not result in near perfect collinearity.
-
-```{r Correlation Matrix 2, echo=FALSE}
-suppressWarnings(ggpairs(my_data, progress = FALSE))
-```
-
-Additionally, we can run Variance Inflation Factor (VIF) on our complex model to better understand how much the variance of the various beta coefficients increases due to multicollinearity. A VIF of less than 5 is indicative of no perfect collineaity. As we can see from the VIF results above, none of our independent variabels have a VIF value of \>= 5. Between the correlation matrix and VIF test, we can conclude our model passes the "no perfect collinearity" assumption.
-
-```{r Assessing Multicollinearity}
-vif(model_complex)
-```
-
-As we can see from the VIF results above, none of our independent variables have an adjusted VIF value of \>= 5. Between the VIF test and conducting an ocular test with a correlation matrix, we can conclude our model passes the "no perfect collinearity" assumption.
-
-Since our data is IID and has no perfect collinearity, we pass all of our large linear model assumptions and can therefore proceed with the use of a multiple regression model.
 
 # Results
 
@@ -411,19 +415,16 @@ Table 1 below compares four models: our "Naive" model with just one predictor va
 
 ```{r Stargazer Table, message=FALSE, echo=FALSE, results='asis'}
 
-stargazer(model_naive, learning_environment, controls, model_complex
+stargazer(model_naive, learning_environment, controls, model_complex,
           title = "Model Comparison",
           column.labels = c("Naive", "Learning Environment", "Controls", "Complex"),
           dep.var.caption = "Regression Table",
           dep.var.labels.include = FALSE,
-          omit = c("Involved.Families", "Supportive.Environment", "Safety", "Effective.Leaders", "Ambitious.Instruction", "Collaborative.Teachers"),
+          omit = c("Effective.Leaders", "Ambitious.Instruction", "Collaborative.Teachers", "Involved.Families", "Supportive.Environment", "Safety"),
           add.lines = list(
             c("Involved Families", "", "\\checkmark", "\\checkmark","\\checkmark"),
-            c("Supportive Environment", "", "\\checkmark", "", ""),
-            c("Safety", "", "\\checkmark",  "\\checkmark","\\checkmark"),
-            c("Effective Leaders", "", "\\checkmark", "", ""),
-            c("Ambitious Instuction", "", "\\checkmark", "",""),
-            c("Collaborative Teachers", "", "\\checkmark", "",""),
+            c("Supportive Environment", "", "\\checkmark", "\\checkmark", "\\checkmark"),
+            c("Safety", "", "\\checkmark","\\checkmark","\\checkmark"),
             "\\hline"
           ), 
           single.row = TRUE,  # Combine into a single row
@@ -437,7 +438,17 @@ In our naive model, $Growth.Reading.and.Math$ is a significant predictor variabl
 
 Across all four models, the coefficient of $Growth.Reading.and.Math$ was shown to be significant at a 99% confidence interval. The coefficients of $Student.Attendance$, $Years.on.Probation$, $Involved.Families$, $Safety$, and $Longitude$ were also highly significant (p \< 0.01) in all the models these variables were present in.
 
-# Discussion of Limitations (Statistical Limitations, Structural Limitations)
+# Limitations
+
+Given our large sample size (218 observations), we can utilize a multiple regression model to assess the key drivers on student success, assuming that our data meets the following statistical limitations: The data must be Independent and Identically Distributed (IID), there must exist no perfect collinearity between features.
+
+Each row in our dataframe represents a unique elementary school in Chicago. Because the data includes the entire population of elementary schools in Chicago rather than a specific sample, we have reduced concerns related to sampling bias since every school is represented in the dataset. Since we are analyzing the entire population of elementary schools in Chicago, we assume that the schools operate under similar conditions and follow similar educational standards and policies. This supports the notion that our observations are drawn from the same distribution, therefore meeting the IID assumption. That said, our scope is limited towards only being able to make generalizations about Chicago public schools.
+
+We examined the relationships between independent variables through a correlation matrix and found no correlations near 1, indicating no perfect collinearity. The strongest correlation observed was between $Collaborative.Teachers$ and $Effective.Leaders$ (r = 0.78), which is well below the threshold for concern. We also conducted a Variance Inflation Factor (VIF) test on our complex model, with all VIF values below 5, further confirming the absence of significant multicollinearity.
+
+Since our data is IID and has no perfect collinearity, we pass all of our large linear model assumptions and therefore rule out any concerns for using a multiple regression model for this analysis.
+
+Regarding structural limitations, one key omitted variable is school funding, which could have significant implications for our model's accuracy. School funding is expected to be positively correlated with our target variable, student success. Moreover, more school funding would likely enhance some of our learning environment variables like safety and student attendance. By having school funding as an omitted variable, we may be inadvertently attributing more significance to our existing predictor variables, thus overestimating their impact. Including data on school funding would therefore drive the main effect towards zero, reducing the likelihood of a type I error.
 
 # Conclusion
 
