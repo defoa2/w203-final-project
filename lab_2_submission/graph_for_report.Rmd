@@ -1,0 +1,43 @@
+```{r library import}
+library(gridExtra)
+```
+
+
+```{r student attendence plot, echo=FALSE}
+p1 <- ggplot(my_data, aes(x = Student.Attendance, y = Student.Success)) +
+  geom_point(color = "blue", alpha = 0.5) +  # Scatter plot with blue points
+  geom_smooth(method = "lm", color = "red", se = FALSE) + # Linear regression line in red
+  labs(
+    title = "Student Attendance vs. Student Success",
+    x = "Student Attendance",
+    y = "Student Success"
+  ) +
+  theme_minimal() +
+  theme(
+    plot.title = element_text(hjust = 0.5, size = 16, face = "bold"),
+    axis.title.x = element_text(size = 12, face = "bold"),
+    axis.title.y = element_text(size = 12, face = "bold")
+  )
+```
+
+```{r learning environment plot, echo=FALSE}
+grade <- rep(c("Very Weak", "Weak", "Neutral", "Strong", "Very Strong"), 6)
+grade <- factor(grade, levels = c("Very Weak", "Weak", "Neutral", "Strong", "Very Strong"))
+
+variable <- c(rep("Involved Families", 5), rep("Supportive Environment", 5), rep("Safety", 5), rep("Effective Leaders", 5), rep("Ambitious Instructions", 5), rep("Collaborative Teachers", 5))
+
+mean <- tapply(my_data$Student.Success, my_data$Involved.Families, mean)
+mean <- c(mean, tapply(my_data$Student.Success, my_data$Supportive.Environment, mean))
+mean <- c(mean, tapply(my_data$Student.Success, my_data$Safety, mean))
+mean <- c(mean, tapply(my_data$Student.Success, my_data$Effective.Leaders, mean))
+mean <- c(mean, tapply(my_data$Student.Success, my_data$Ambitious.Instruction, mean))
+mean <- c(mean, tapply(my_data$Student.Success, my_data$Collaborative.Teachers, mean))
+
+d <- data.frame(variable, grade, mean)
+```
+
+```{r plots side by side, echo=FALSE}
+p2 <- ggplot(d, aes(fill=variable, y=mean, x = grade)) + geom_bar(position ="dodge", stat="identity")
+
+grid.arrange(p1, p2)
+```
