@@ -298,7 +298,7 @@ dim(my_data)
 model_naive <- lm(Student.Success ~ Student.Attendance, data = my_data)
 
 # Complex Model: All the variables
-model_complex <- lm(Student.Success ~ Growth.Reading.and.Math +
+model_complex <- lm(Student.Success ~
                     Student.Attendance +
                     Suspensions.Percent +
                     Suspension.Days +
