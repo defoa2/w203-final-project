@@ -253,7 +253,7 @@ p2 <- ggplot(d, aes(fill = variable, y = mean, x = grade)) +
 grid.arrange(p1, p2)
 ```
 
-```{r Correlation Matrix, echo=FALSE}
+```{r Correlation Matrix, echo=FALSE, include=FALSE}
 # Exclude the specific columns from the subset
 subset <- my_data[, setdiff(names(my_data), c("Student.Success", "Student.Performance.Reading.and.Math", "Growth.Reading.and.Math"))]
 
