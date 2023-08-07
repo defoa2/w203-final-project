@@ -313,7 +313,6 @@ model_complex <- lm(Student.Success ~ Growth.Reading.and.Math +
                     Latitude + 
                     Years.on.Probation, data = my_data)
 
-# Wald Test: Controllable variables
 learning_environment <- lm(Student.Success ~ Student.Attendance +
                         Teacher.Attendance +
                         Involved.Families +
@@ -323,13 +322,14 @@ learning_environment <- lm(Student.Success ~ Student.Attendance +
                         Ambitious.Instruction +
                         Collaborative.Teachers, data = my_data)
 
-# Wald Test: Controllable variables + Geolocation
-controls <- lm(Student.Success ~ Suspensions.Percent +
-                            Suspension.Days + 
-                            Years.on.Probation +
-                            Longitude +
-                            Latitude +
-                            School.Track, data = my_data)
+# Significant predictors plus other significant variables from complex model unrelated to learning_environment
+controls <- lm(Student.Success ~ Student.Attendance +
+                            Teacher.Attendance +
+                            Involved.Families +
+                            Supportive.Environment +
+                            Safety +
+                            School.Track +
+                            Years.on.Probation, data = my_data)
 ```
 
 ```{r naive summary, echo=FALSE, include=FALSE}
