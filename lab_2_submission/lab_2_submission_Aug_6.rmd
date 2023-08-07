@@ -20,6 +20,11 @@ header-includes:
  \floatplacement{figure}{H}
 ---
 
+```{r}
+tinytex::install_tinytex()
+```
+
+
 ```{=tex}
 \newpage
 \setcounter{page}{1}
@@ -414,14 +419,11 @@ stargazer(model_naive, learning_environment, controls, model_complex,
           column.labels = c("Naive", "Learning Environment", "Controls", "Complex"),
           dep.var.caption = "Regression Table",
           dep.var.labels.include = FALSE,
-          omit = c("Effective.Leaders", "Ambitious.Instruction", "Collaborative.Teachers", "Suspension.Days", "Suspensions.Percent", "Latitude", "Longitude"),
+          omit = c("Effective.Leaders", "Ambitious.Instruction", "Collaborative.Teachers", "Suspension.Days", "Suspensions.Percent", "Latitude", "Longitude", "Involved.Families", "Supportive.Environment", "Safety"),
           add.lines = list(
             c("Involved Families", "", "\\checkmark", "\\checkmark","\\checkmark"),
-            c("Supportive Environment", "", "\\checkmark", "", ""),
-            c("Safety", "", "\\checkmark",  "\\checkmark","\\checkmark"),
-            c("Effective Leaders", "", "\\checkmark", "", ""),
-            c("Ambitious Instuction", "", "\\checkmark", "",""),
-            c("Collaborative Teachers", "", "\\checkmark", "",""),
+            c("Supportive Environment", "", "\\checkmark", "\\checkmark", "\\checkmark"),
+            c("Safety", "", "\\checkmark","\\checkmark","\\checkmark"),
             "\\hline"
           ), 
           single.row = TRUE,  # Combine into a single row
