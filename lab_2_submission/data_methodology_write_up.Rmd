@@ -1,0 +1,20 @@
+The data for this study is from the 2012 School Progress Report Card for the elementary schools in the Chicago Public School System, it was made public by the city of Chicago. Each row represents an elementary school in the school district. The dataset had 460 rows, however, there were schools that had missing values or had a "not enough data record" in our variables of interest. There seemed to be no obvious pattern in the schools that had missing values, so we chose to exclude these from our analysis, which left us with 218 observations. 
+
+Average daily student attendance was one of the main variables of interest provided in the dataset. Studies have shown that student attendance is one of the most important factors in student success in the classroom[^3]. Motivation in general has been shown to be very important for learning, and attendance is a key measure of a student's academic motivation[^4]. Additionally, this dataset also contains a grade for several learning environment variables. Schools were graded on a 5 point scale from "very weak" to "very strong" on how well the school involved families, how supportive the environment was, how safe the school was, if the leadership was focused, if the instruction was focused and challenging, and how well the teachers worked together. Additionally, there was average daily attendance variable for teachers. These student motivation and learning environment variables were the ones that we were primarily interested in to understand which ones were significantly associated with academic success. We are interested in using a regression model to evaluate which of these classroom experience variables have significant coefficients to explain the variability in academic success. 
+
+We also wanted to control for other factors that impact the school that were not directly related to what was in the classroom. To do so, we incorporated an indicator variable showing if the school was on a regular schedule or a shortened summer schedule to reduce learning loss over summer break, the number of years the school had been on probation, disciplinary policy (the number of misconducts resulting in suspension and average days of suspension), and location (longitude and latitude) as variables to consider in our model.
+
+We operationalized student success to incorporate two metrics: they proportion of students at the school who met or exceeded the national average on reading and math test and the proportion of students who improved the expected amount between the fall and spring tests. We averaged these two proportions to create a combined metric on student success, which we used as our outcome variable in our models.
+
+*insert figure here*
+
+Our exploratory plots showed a roughly linear relationship between our variables of interest and student success. The structure of our model was
+
+$$\hat{\text{Student Success}} = \beta_0 + \beta_1 \cdot \text{Student Attendance} + \text{Y}\gamma + \text{Z}\delta$$
+
+Y is a row vector learning environment variables and $\gamma$ is a column vector of the coefficients. Z is a row vector of the additional control covariates and $\delta$ is a column vector of the coefficients.
+
+Because of the importance of student attendance, we wanted to run a naive model with just this variable. We ran a wald test for nested models, testing one variable at a time starting with the learning environment variables as they appeared in the dataset to identify the significant learning environment variables and did the same with the other covariates. 
+
+[^3] Every School Day Counts: The Forum Guide to collecting and using attendance data. National Center for Education Statistics (NCES) Home Page, a part of the U.S. Department of Education. (n.d.). https://nces.ed.gov/pubs2009/attendancedata/chapter1a.asp.
+[^4] Davis, L. (2015). STUDENT ATTENDANCE: A SCHOOL’S INTERVENTION TO INCREASE ATTENDANCE. [online] Available at: https://www.nwmissouri.edu/library/researchpapers/2015/Davis,%20Luke.pdf [Accessed 7 Aug. 2023].
