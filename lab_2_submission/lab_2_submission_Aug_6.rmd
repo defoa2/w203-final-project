@@ -62,7 +62,8 @@ school_columns <- c("Student.Performance.Reading.and.Math",
                     "Collaborative.Teachers",
                     "Longitude",
                     "Latitude",
-                    "Years.on.Probation")
+                    "Years.on.Probation",
+                    "School.Track")
 
 
 # Read in initial data : 460 Records
@@ -326,7 +327,8 @@ controls <- lm(Student.Success ~ Suspensions.Percent +
                             Suspension.Days + 
                             Years.on.Probation +
                             Longitude +
-                            Latitude, data = my_data)
+                            Latitude +
+                            School.Track, data = my_data)
 ```
 
 ```{r naive summary, echo=FALSE, include=FALSE}
@@ -393,9 +395,13 @@ mod12 <- lm(Student.Success~Student.Attendance + Teacher.Attendance + Involved.F
 
 waldtest(mod10, mod12,  vcov=vcovHC(mod12, type="HC0")) # not significant
 
+# School.Track
+mod13 <- lm(Student.Success~Student.Attendance + Teacher.Attendance + Involved.Families + Supportive.Environment + Safety + Years.on.Probation + School.Track, data=my_data)
 
+waldtest(mod10, mod13,  vcov=vcovHC(mod13, type="HC0")) # not significant
 
 ```
+
 
 # Results
 
@@ -431,13 +437,13 @@ Across all four models, the coefficient of $Growth.Reading.and.Math$ was shown t
 
 # Limitations
 
-Given our large sample size (218 observations), we can utilize a multiple regression model to assess the key drivers on student success, assuming that our data meets the following statistical limitations: The data must be Independent and Identically Distributed (IID), there must exist no perfect collinearity between features. 
+Given our large sample size (218 observations), we can utilize a multiple regression model to assess the key drivers on student success, assuming that our data meets the following statistical limitations: The data must be Independent and Identically Distributed (IID), there must exist no perfect collinearity between features.
 
 Each row in our dataframe represents a unique elementary school in Chicago. Because the data includes the entire population of elementary schools in Chicago rather than a specific sample, we have reduced concerns related to sampling bias since every school is represented in the dataset. Since we are analyzing the entire population of elementary schools in Chicago, we assume that the schools operate under similar conditions and follow similar educational standards and policies. This supports the notion that our observations are drawn from the same distribution, therefore meeting the IID assumption. That said, our scope is limited towards only being able to make generalizations about Chicago public schools.
 
-We examined the relationships between independent variables through a correlation matrix and found no correlations near 1, indicating no perfect collinearity. The strongest correlation observed was between $Collaborative.Teachers$ and $Effective.Leaders$ (r = 0.78), which is well below the threshold for concern. We also conducted a Variance Inflation Factor (VIF) test on our complex model, with all VIF values below 5, further confirming the absence of significant multicollinearity. 
+We examined the relationships between independent variables through a correlation matrix and found no correlations near 1, indicating no perfect collinearity. The strongest correlation observed was between $Collaborative.Teachers$ and $Effective.Leaders$ (r = 0.78), which is well below the threshold for concern. We also conducted a Variance Inflation Factor (VIF) test on our complex model, with all VIF values below 5, further confirming the absence of significant multicollinearity.
 
-Since our data is IID and has no perfect collinearity, we pass all of our large linear model assumptions and therefore rule out any concerns for using a multiple regression model for this analysis. 
+Since our data is IID and has no perfect collinearity, we pass all of our large linear model assumptions and therefore rule out any concerns for using a multiple regression model for this analysis.
 
 Regarding structural limitations, one key omitted variable is school funding, which could have significant implications for our model's accuracy. School funding is expected to be positively correlated with our target variable, student success. Moreover, more school funding would likely enhance some of our learning environment variables like safety and student attendance. By having school funding as an omitted variable, we may be inadvertently attributing more significance to our existing predictor variables, thus overestimating their impact. Including data on school funding would therefore drive the main effect towards zero, reducing the likelihood of a type I error.
 
