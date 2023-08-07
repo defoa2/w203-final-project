@@ -316,6 +316,7 @@ model_complex <- lm(Student.Success ~
                     Collaborative.Teachers +
                     Longitude +
                     Latitude + 
+                    School.Track +
                     Years.on.Probation, data = my_data)
 
 learning_environment <- lm(Student.Success ~ Student.Attendance +
@@ -419,7 +420,7 @@ stargazer(model_naive, learning_environment, controls, model_complex,
           column.labels = c("Naive", "Learning Environment", "Controls", "Complex"),
           dep.var.caption = "Regression Table",
           dep.var.labels.include = FALSE,
-          omit = c("Effective.Leaders", "Ambitious.Instruction", "Collaborative.Teachers", "Suspension.Days", "Suspensions.Percent", "Latitude", "Longitude", "Involved.Families", "Supportive.Environment", "Safety"),
+          omit = c("Effective.Leaders", "Ambitious.Instruction", "Collaborative.Teachers", "Involved.Families", "Supportive.Environment", "Safety"),
           add.lines = list(
             c("Involved Families", "", "\\checkmark", "\\checkmark","\\checkmark"),
             c("Supportive Environment", "", "\\checkmark", "\\checkmark", "\\checkmark"),
