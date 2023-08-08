@@ -13,7 +13,7 @@ output:
   fig_caption: yes
   includes:
     in_header: my_header.tex
-geometry: "left=0.35in,right=0.35in,top=1in,bottom=1in"
+geometry: "left=0.35in,right=0.35in,top=1in,bottom=.5in"
 header-includes:
  \usepackage{wrapfig}
  \usepackage{float}
