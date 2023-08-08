@@ -152,6 +152,8 @@ The Chicago Public School District is amongst the largest and most diverse urban
 
 Through this analysis, we aim to provide Chicago elementary school superintendents with a robust framework for developing multi-year roadmaps to enhance academic success. This can include changes from staffing and leadership decisions, school security code changes, and teaching staff rostering to disciplinary policies. The end result will be a more responsive, equitable, and effective educational system that empowers students to thrive academically. This work contributes to the broader movement towards data-informed education, embodying the shared vision of educators, policymakers, and researchers alike to harness the transformative potential of data for the betterment of our schools and communities.
 
+This study estimates the average proportion of elementary school students who are meeting progress and proficiency targets in Chicago. The data shows details on the status of the school and the quality of the classroom environment. We propose a set of regression models to show the learning environment variables that are significant to predicting student success. 
+
 # Data and Methodology
 
 The data for this study is from the 2012 School Progress Report Card for the elementary schools in the Chicago Public School System. It was made public by the city of Chicago. Each row represents an elementary school in the school district. The dataset had 460 rows, however, there were schools that had missing values or had a "not enough data record" in our variables of interest. There seemed to be no obvious pattern in the schools that had missing values, so we chose to exclude these from our analysis, which left us with 218 observations.
@@ -303,7 +305,7 @@ heatmap_plot <- heatmap_plot + labs(y = "Student.Success")
 heatmap_plot
 ```
 
-```{r}
+```{r, echo=FALSE, include=FALSE}
 heatmap_plot
 ```
 
@@ -336,10 +338,7 @@ learning_environment <- lm(Student.Success ~ Student.Attendance +
                         Teacher.Attendance +
                         Involved.Families +
                         Supportive.Environment +
-                        Safety +
-                        Effective.Leaders +
-                        Ambitious.Instruction +
-                        Collaborative.Teachers, data = my_data)
+                        Safety, data = my_data)
 
 # Significant predictors plus other significant variables from complex model unrelated to learning_environment
 controls <- lm(Student.Success ~ Student.Attendance +
@@ -424,16 +423,16 @@ waldtest(mod10, mod13,  vcov=vcovHC(mod13, type="HC0")) # not significant
 
 # Results
 
-Table 1 below compares four models: our "Naive" model with just one predictor variable, $Student.Attendance$, a model containing our learning environment variables, a model with significant learning environment variables plus significant controls, like $School.Track$ and $Years.on.Provation$. Last but not least, we have a "Complex" model which includes all our predictor variables.
+Table 1 below compares four models: our "Naive" model with just one predictor variable, $\text{Student Attendance}$, a model containing our learning environment variables, a model with significant learning environment variables plus significant controls, like $\text{School Track}$ and $\text{Years on Probation}$. Last but not least, we have a "Complex" model which includes all our predictor variables.
 
-Across all models, the beta coefficient on $\text{Student Attendance}$ was highly significant (p<0.01), indicating a strong positive relationship with student success. The coefficient decrease as more features are added to the model, ranging from 2.92 in the Naive model to 1.81 in the Complex model. This indicates that our model is initially overestimating the effect size of $\text{Student Attendance}$.
-
-To illustrate this concept, consider a hypothetical school with a Student Attendance rate of 90%. According to the Naive model, if the Student Attendance rate increases by 10 percentage points (to 100%), the student success metric is predicted to increase by approximately 29%. This is over double the increase compared to the complex model, which would increase $\text{Student Success}$ by only ~11%.
+Across all models, the beta coefficient on $\text{Student Attendance}$ was highly significant (p<0.01), indicating a strong positive relationship with student success. The coefficient point estimate decreases as more features are added to the model, ranging from 2.92 in the Naive model to 1.08 in the Complex model. This shows how the beta coefficient is pushed down by the inclusion of other environment and control variables.
 
 ```{r Stargazer Table, message=FALSE, echo=FALSE, results='asis'}
 
 stargazer(model_naive, learning_environment, controls, model_complex,
           title = "Model Comparison",
+          header = FALSE,
+          table.placement = "!ht",
           column.labels = c("Naive", "Learning Environment", "Controls", "Complex"),
           dep.var.caption = "Regression Table",
           dep.var.labels.include = FALSE,
@@ -452,10 +451,13 @@ stargazer(model_naive, learning_environment, controls, model_complex,
           single.row = TRUE,  # Combine into a single row
           type = "latex", # Output in LaTeX format
           digits=2,
-          font.size="small"
+          font.size="small",
+          notes.append = FALSE,
+          notes = "\\parbox[t]{7cm}{School Schedule (Track E) is an indicator variable for having a shortened summer schedule. The categorical covariates each have 5 levels, a grade on the category from 'very weak' to 'very strong'.}"
           ) 
 ```
 
+To illustrate the scale of these effects, consider a hypothetical school with a Student Attendance rate of 90%. Applying the learning environment model with controls, a school that experienced a increase in student attendance by 10 percentage points would be predicted to experience a 12 percentage point increase in the average proportion of students who are meeting or exceeding the national average or meeting expected growth rate in a school year.
 Although $\text{Teacher Attendance}$ was significant in the nested model test when we added it as a second variable, once other significant variables were added in, it lost it's significance. This was due to the standard error being fairly high. 
 
 Two variables, $\text{School Schedule (Track E)}$ and $\text{Years on Probation}$, appear to have a significant negative relationship on student success in the Controls and Complex models. $\text{Years on Probation}$ had a small effect size, but with a very small standard error and it was very robust to different model specifications. A school being on a reduced summer schedule (Track E) was also negatively associated with $\text{Student Success}$. There may be an element of reverse causality here in that a school where students are struggling more is more likely to try a different summer schedule to reduce school break learning loss.   
@@ -476,13 +478,13 @@ We examined the relationships between independent variables through a correlatio
 
 Since our data is IID and has no perfect collinearity, we pass all of our large linear model assumptions and therefore rule out any concerns for using a multiple regression model for this analysis.
 
-Regarding structural limitations, one key omitted variable is school funding, which could have significant implications for our model's accuracy. School funding is expected to be positively correlated with our target variable, $Student.Success$. Moreover, more school funding would likely enhance some of our learning environment variables like safety and student attendance. By having school funding as an omitted variable, we may be inadvertently attributing more significance to our existing predictor variables, thus overestimating their impact. Including data on school funding would therefore drive the main effect towards zero, reducing the likelihood of a type I error.
+Regarding structural limitations, one key omitted variable is school funding, which could have significant implications for our model's accuracy. School funding is expected to be positively correlated with our target variable, $\text{Student Success}$. Moreover, more school funding would likely enhance some of our learning environment variables like safety and student attendance. By having school funding as an omitted variable, we may be inadvertently attributing more significance to our existing predictor variables, thus overestimating their impact. Including data on school funding would therefore drive the main effect towards zero, reducing the likelihood of a type I error.
 
 # Conclusion
 
 Through our analysis, we can conclude that for elementary students in Chicago public schools, student's success is significantly associated with their school attendance, school status, and learning environment, including variables like $\text{Involved Families}$, $\text{Supportive Environment}$, and $\text{Safety}$. 
 
-Since student success can benefit society in many ways, from increasing tax revenue to creating a more vibrant society[^5], it is crucial for superintendents to use this information to align priorities when developing future roadmaps to drive student success. As a starting point, superintendents can focus on increasing student attendance, which had the largest coefficient amongst our significant predictor variables. As shown in our best-performing model, the Control model, for every percent change in student attendance, student success increases 1.24%. Given these results, Chicago elementary school superintendents could prioritize reforms that help increase student attendance, particularly in southern and eastern parts of the city.
+Since student success can benefit society in many ways, from increasing tax revenue to creating a more vibrant society[^5], it is crucial for superintendents to use this information to align priorities when developing future road maps to drive student success. As a starting point, superintendents can focus on increasing student attendance, which had the largest coefficient amongst our significant predictor variables.  Crucially, by identifying significant relationships, further randomized experimental research can be done on the association that were found to be signficant through out our investigation in order to establish what the causal relationship is between the learning environment and student's academic success.
 
 [^5]: How do college graduates benefit society at large?. APLU. (2023, March 1). <https://www.aplu.org/our-work/4-policy-and-advocacy/publicuvalues/societal-benefits/>
 
