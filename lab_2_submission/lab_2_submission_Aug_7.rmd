@@ -446,7 +446,7 @@ stargazer(model_naive, learning_environment, controls, model_complex,
             "\\hline"
           ), 
           single.row = TRUE,  # Combine into a single row
-          type = "text", # Output in LaTeX format
+          type = "latex", # Output in LaTeX format
           digits=2,
           font.size="small"
           ) 
