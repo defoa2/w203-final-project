@@ -13,7 +13,7 @@ output:
   fig_caption: yes
   includes:
     in_header: my_header.tex
-geometry: "left=0.5in,right=0.5in,top=0.5in,bottom=0.5in"
+geometry: "left=0.35in,right=0.35in,top=1in,bottom=1in"
 header-includes:
  \usepackage{wrapfig}
  \usepackage{float}
@@ -215,7 +215,7 @@ p<- ggplot(my_data, aes(x = Latitude,
                color = Student.Success)) + geom_point()
 ```
 
-```{r learning environment plot, echo=FALSE}
+```{r learning environment plot, echo=FALSE, fig.align='center'}
 
 p1 <- ggplot(my_data, aes(x = Student.Attendance, y = Student.Success)) +
   geom_point(color = "blue", alpha = 0.5) +  # Scatter plot with blue points
@@ -426,6 +426,10 @@ waldtest(mod10, mod13,  vcov=vcovHC(mod13, type="HC0")) # not significant
 
 Table 1 below compares four models: our "Naive" model with just one predictor variable, $Student.Attendance$, a model containing our learning environment variables, a model with significant learning environment variables plus significant controls, like $School.Track$ and $Years.on.Provation$. Last but not least, we have a "Complex" model which includes all our predictor variables.
 
+Across all models, the beta coefficient on $\text{Student Attendance}$ was highly significant (p<0.01), indicating a strong positive relationship with student success. The coefficient decrease as more features are added to the model, ranging from 2.92 in the Naive model to 1.81 in the Complex model. This indicates that our model is initially overestimating the effect size of $\text{Student Attendance}$.
+
+To illustrate this concept, consider a hypothetical school with a Student Attendance rate of 90%. According to the Naive model, if the Student Attendance rate increases by 10 percentage points (to 100%), the student success metric is predicted to increase by approximately 29%. This is over double the increase compared to the complex model, which would increase $\text{Student Success}$ by only ~11%.
+
 ```{r Stargazer Table, message=FALSE, echo=FALSE, results='asis'}
 
 stargazer(model_naive, learning_environment, controls, model_complex,
@@ -434,6 +438,8 @@ stargazer(model_naive, learning_environment, controls, model_complex,
           dep.var.caption = "Regression Table",
           dep.var.labels.include = FALSE,
           omit = c("Effective.Leaders", "Ambitious.Instruction", "Collaborative.Teachers", "Involved.Families", "Supportive.Environment", "Safety"),
+                    covariate.labels = c("Student Attendance", " Suspension Percent", "Suspension Days", "Teacher Attendance", "Longitude", "Latitude", "School Schedule (Track E)", "Years on Probation", "Constant"),
+
           add.lines = list(
             c("Involved Families", "", "\\checkmark", "\\checkmark","\\checkmark"),
             c("Supportive Environment", "", "\\checkmark", "\\checkmark", "\\checkmark"),
@@ -450,17 +456,15 @@ stargazer(model_naive, learning_environment, controls, model_complex,
           ) 
 ```
 
-Across all models, the beta coefficient on $Student.Attendance$ was highly significant (p\<0.01), indicating a strong positive relationship with student success. The coefficient decrease as more features are added to the model, ranging from 2.92 in the Naive model to 1.08 in the Complex model. This indicates that our model is initially overestimating the effect size of $Student.Attendance$.
+Although $\text{Teacher Attendance}$ was significant in the nested model test when we added it as a second variable, once other significant variables were added in, it lost it's significance. This was due to the standard error being fairly high. 
 
-To illustrate this concept, consider a hypothetical school with a student attendance rate of 90%. According to the Naive model, if the student attendance rate increases by 10 percentage points (to 100%), the student success metric is predicted to increase by approximately 29%. This is over double the increase compared to the complex model, which would increase $Student.Success$ by only \~11%.
+Two variables, $\text{School Schedule (Track E)}$ and $\text{Years on Probation}$, appear to have a significant negative relationship on student success in the Controls and Complex models. $\text{Years on Probation}$ had a small effect size, but with a very small standard error and it was very robust to different model specifications. A school being on a reduced summer schedule (Track E) was also negatively associated with $\text{Student Success}$. There may be an element of reverse causality here in that a school where students are struggling more is more likely to try a different summer schedule to reduce school break learning loss.   
 
-Despite $Student.Attendance$ being significant, $Teacher.Attendance$ was not significant in any of the models with a 95% confidence interval.
+Several variables, including $\text{Suspensions Percent}$, $\text{Suspension Days}$, $\text{Longitude}$, and $\text{Latitude}$, were included in the Complex model but did not show statistical significance. This is due to some extent on our operationalization of $\text{Student Success}$. For instance, there is a significant North-South divide on socio-economic status in Chicago, so longitude had a strong linear relationship with national performance on math and reading tests, but an insignificant relationship with growth on math and reading tests. 
 
-Two variables, $School.TrackTrack E$ and $Years.on.Probation$, appear to have a significant negative impact on student success in the Controls and Complex models. This indicates that schools on a specific track or with more years on probation have lower rates of student success, which intuitively makes sense.
+From examining the Complex model, we can see some of the negative effects of including insignificant variables. In the complex model, the confidence on $\text{Teacher Attendance}$ is likely very overestimated since it increases dramatically from the learning environment with controls model. Additionally, in the complex model, the coefficients of the dummy variables from improving the grade $\text{Supportive Environment}$ flips from a positive association with $\text{Student Success}$ to a negative one. 
 
-Several variables, including $Suspensions.Percent$, $Suspension.Days$, $Longitude$, and $Latitude$, were included in the Complex model but did not show statistical significance. This is despite $Longitude$ having a strong postive relationship with our target variable, $Student.Success$. This could suggest that these factors are not strong predictors of student success, at least within the context of this complex model.
-
-Ultimately, our Control model works best as it explains the same degree of variability as our Complex model (Adj. R-squared = 52%), but with 10 less features. Because the Complex model could be reducing the effect size of important predictors, like $Student.Attendance$, we favor Occam's razor in this situation, and therefore conclude that our Control model performs the best.
+Considering the different model specifications, the Learning Environment with controls is the best model because it can give estimates for the classroom related variables that teachers and superintendents will be interested to learn about, while controlling for other school factors, without creating the interpretability problems that would arise from using the less parsimonious complex model. 
 
 # Limitations
 
@@ -468,7 +472,7 @@ Given our large sample size (218 observations), we can utilize a multiple regres
 
 Each row in our dataframe represents a unique elementary school in Chicago. Because the data includes the entire population of elementary schools in Chicago rather than a specific sample, we have reduced concerns related to sampling bias since every school is represented in the dataset. Since we are analyzing the entire population of elementary schools in Chicago, we assume that the schools operate under similar conditions and follow similar educational standards and policies. This supports the notion that our observations are drawn from the same distribution, therefore meeting the IID assumption. That said, our scope is limited towards only being able to make generalizations about Chicago public schools.
 
-We examined the relationships between independent variables through a correlation matrix and found no correlations near 1, indicating no perfect collinearity. The strongest correlation observed was between $Collaborative.Teachers$ and $Effective.Leaders$ (r = 0.78), which is well below the threshold for concern. We also conducted a Variance Inflation Factor (VIF) test on our complex model, with all VIF values below 5, further confirming the absence of significant multicollinearity.
+We examined the relationships between independent variables through a correlation matrix and found no correlations near 1, indicating no perfect collinearity. We did not observe any correlations that were high enough to be a concern. Additionally, we examined the VIF of all of the possible variables together (the complex model) and saw that all of the variables were below 5, which shows that multicollinearity is not a concern for this data. 
 
 Since our data is IID and has no perfect collinearity, we pass all of our large linear model assumptions and therefore rule out any concerns for using a multiple regression model for this analysis.
 
@@ -476,7 +480,7 @@ Regarding structural limitations, one key omitted variable is school funding, wh
 
 # Conclusion
 
-Through our analysis, we can conclude a student's success is significantly impacted by their school attendance, school status, and learning environment, including variables like $Involved.Families$, $Supportive.Environment$, and $Safety$.
+Through our analysis, we can conclude that for elementary students in Chicago public schools, student's success is significantly associated with their school attendance, school status, and learning environment, including variables like $\text{Involved Families}$, $\text{Supportive Environment}$, and $\text{Safety}$. 
 
 Since student success can benefit society in many ways, from increasing tax revenue to creating a more vibrant society[^5], it is crucial for superintendents to use this information to align priorities when developing future roadmaps to drive student success. As a starting point, superintendents can focus on increasing student attendance, which had the largest coefficient amongst our significant predictor variables. As shown in our best-performing model, the Control model, for every percent change in student attendance, student success increases 1.24%. Given these results, Chicago elementary school superintendents could prioritize reforms that help increase student attendance, particularly in southern and eastern parts of the city.
 
